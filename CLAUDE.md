@@ -1,4 +1,4 @@
-# komichi
+# dolce
 
 PDF・CBZ 形式の電子書籍/コミックをローカルで管理・閲覧する Flutter 製クロスプラットフォームリーダー。
 
@@ -12,7 +12,7 @@ PDF・CBZ 形式の電子書籍/コミックをローカルで管理・閲覧す
 
 - [docs/企画書.md](docs/企画書.md) — 要件・機能一覧・開発ロードマップ（v1.0 Draft, 2026年2月時点）
 - [docs/技術仕様書.md](docs/技術仕様書.md) — アーキテクチャ・データモデル・ビューア仕様の設計文書
-- [docs/開発指示書.md](docs/開発指示書.md) — 初期実装をステップ単位で進めた際の指示書（プロジェクト名は旧称 `kuwa` のまま。実際の pubspec 名は `komichi`）
+- [docs/開発指示書.md](docs/開発指示書.md) — 初期実装をステップ単位で進めた際の指示書（プロジェクト名は旧称 `kuwa` のまま。実際の pubspec 名は `dolce`。旧アプリ名は `komichi`）
 - [docs/実装済みショートカット.md](docs/実装済みショートカット.md) — 現行のキーボード/マウス操作一覧。企画書のフェーズ計画にない機能（タブ、本棚サイドバー、複数選択）も含む
 
 **注意:** 上記ドキュメントは設計時点のスナップショットであり、実装は次のように乖離している。コードを触る際は下記「既知の乖離点」を優先し、ドキュメントは背景理解に留める。
@@ -41,7 +41,7 @@ Flutter (Dart) / SDK `>=3.0.0 <4.0.0`
 ```
 lib/
   main.dart                         # エントリーポイント。windowManager初期化 → Hive初期化・Box open → runApp
-  app.dart                          # KomichiApp（テーマ）+ TabShell（タブバー・本棚サイドバー・メイン表示、ルーティングの代わり）
+  app.dart                          # DolceApp（テーマ）+ TabShell（タブバー・本棚サイドバー・メイン表示、ルーティングの代わり）
   core/
     db/hive_adapter.dart
     providers/
@@ -89,7 +89,7 @@ lib/
 - **マルチタブ・複数選択**: 企画書のフェーズ計画（Phase 1〜4）には出てこないが、`tab_provider.dart` / `selection_provider.dart` として先行実装済み。詳細な操作は [docs/実装済みショートカット.md](docs/実装済みショートカット.md) が正。
 - **タブモード廃止**: かつて存在した `AppSettings.tabMode`（`fixedLibrary`/`independent`の切り替え）は廃止し、常に「本はそのタブ内で開く」動作に統一した。`TabMode` enum自体は既存Hiveデータの後方互換デコード用にコード上残っているが、新規に参照してはならない。
 - **ウィンドウ管理**: `window_manager` でカスタムタイトルバー（`TitleBarStyle.hidden` + 独自の最小化/最大化/閉じるボタン）と、ビューアのUIオーバーレイ非表示時の自動フルスクリーン化を実装。技術仕様書には記載なし。
-- **プロジェクト名**: 開発指示書内は旧称 `kuwa` のままだが、pubspec.yaml の `name` は `komichi`。
+- **プロジェクト名**: 開発指示書内は旧称 `kuwa` のままだが、pubspec.yaml の `name` は `dolce`（旧アプリ名 `komichi` から改名。Microsoft Storeには`komichi`名義で提出済みのため、MSIXの`identity_name`/`publisher`は`Rhing.komichi`のまま変更していない）。
 
 ## データモデル（Hive）
 
@@ -130,6 +130,7 @@ flutter build linux     # / build windows / build apk         # ビルド
 | `Ctrl+←` / `Ctrl+→` | 最初/最後のページへ |
 | `Shift+←` / `Shift+→` | 同フォルダ内の前/次の本を開く |
 | `Space` | UIオーバーレイ表示切り替え |
+| `P` | 自動ページめくりの開始/停止（間隔は下部メニューの再生ボタン長押しで選択） |
 | `Esc` | タブ内で1つ上の階層に戻る（タブは閉じない） |
 | `Alt+←` / `Alt+→` | タブ内ナビゲーション履歴の戻る/進む |
 | `Ctrl+Tab` / `Ctrl+Shift+Tab` | 右/左のタブへ切り替え |
@@ -143,6 +144,5 @@ flutter build linux     # / build windows / build apk         # ビルド
 | マウスの戻る/進むボタン | タブ内ナビゲーション履歴の戻る/進む |
 
 - ユーザーが書き換えたコードに関して、プログラムが動かなくなる場合を除き、修正しない
-- git push,pullは全て https://github.com/rhing-official/komichi で行う
+- git push,pullは全て https://github.com/rhing-official/dolce で行う
 - コミュニケーションは日本語で行う
-- トークンの取得や管理者権限が不要なターミナルの実行など、全般的な処理は全てClaude Codeが行う
