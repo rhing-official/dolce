@@ -29,13 +29,15 @@ class BookAdapter extends TypeAdapter<Book> {
       ..thumbnailPath = fields[9] as String?
       ..isFavorite = fields[10] == null ? false : fields[10] as bool
       ..number = fields[11] as double?
-      ..relPath = fields[12] as String?;
+      ..relPath = fields[12] as String?
+      ..fileSize = fields[13] as int?
+      ..fileModifiedAt = fields[14] as DateTime?;
   }
 
   @override
   void write(BinaryWriter writer, Book obj) {
     writer
-      ..writeByte(13)
+      ..writeByte(15)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -61,7 +63,11 @@ class BookAdapter extends TypeAdapter<Book> {
       ..writeByte(11)
       ..write(obj.number)
       ..writeByte(12)
-      ..write(obj.relPath);
+      ..write(obj.relPath)
+      ..writeByte(13)
+      ..write(obj.fileSize)
+      ..writeByte(14)
+      ..write(obj.fileModifiedAt);
   }
 
   @override

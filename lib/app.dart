@@ -45,11 +45,15 @@ ColorScheme _monochromeScheme(Brightness brightness) {
     inverseSurface: isDark ? const Color(0xFFE6E6E6) : const Color(0xFF2A2A2A),
     onInverseSurface:
         isDark ? const Color(0xFF1A1A1A) : const Color(0xFFECECEC),
+    // ★AppBar等がスクロール時に重ねるティント色。未上書きだとfromSeedが
+    // 計算したprimary（モノクロ化前の色相）が残り、スクロール時に上部の
+    // 色が浮いて見えるバグの原因になっていた
+    surfaceTint: isDark ? const Color(0xFFE0E0E0) : const Color(0xFF303030),
   );
 }
 
-class KomichiApp extends ConsumerWidget {
-  const KomichiApp({super.key});
+class DolceApp extends ConsumerWidget {
+  const DolceApp({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
@@ -222,9 +226,10 @@ class _TabShellState extends ConsumerState<TabShell>
     final result = await ref.read(libraryProvider.notifier).syncAll();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(result.added == 0 && result.removed == 0
-          ? '変更はありませんでした'
-          : '更新しました（追加${result.added}件 / 削除${result.removed}件）'),
+      content: Text(
+          result.added == 0 && result.updated == 0 && result.removed == 0
+              ? '変更はありませんでした'
+              : '更新しました（追加${result.added}件 / 更新${result.updated}件 / 削除${result.removed}件）'),
       duration: const Duration(seconds: 2),
     ));
   }
@@ -284,11 +289,7 @@ class _TabShellState extends ConsumerState<TabShell>
       onPointerDown: (event) {
         // bit 3 (8), bit 7 (128) -> Back
         if ((event.buttons & 8) != 0 || (event.buttons & 128) != 0) {
-          if (currentTab.bookId != null) {
-            notifier.closeBook(currentTab);
-          } else {
-            notifier.undo();
-          }
+          notifier.goBack();
         }
         // bit 4 (16), bit 8 (256) -> Forward
         else if ((event.buttons & 16) != 0 || (event.buttons & 256) != 0) {

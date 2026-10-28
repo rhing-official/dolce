@@ -61,6 +61,63 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 children: [
                   Padding(
                     padding: const EdgeInsets.all(16.0),
+                    child: Text(loc.languageSection,
+                        style: Theme.of(context).textTheme.titleMedium),
+                  ),
+                  RadioListTile<AppLanguage>(
+                    title: Text(loc.languageJapanese),
+                    value: AppLanguage.ja,
+                    groupValue: settings.language,
+                    onChanged: (val) {
+                      if (val != null)
+                        notifier.state = settings.copyWith(language: val);
+                    },
+                  ),
+                  RadioListTile<AppLanguage>(
+                    title: Text(loc.languageEnglish),
+                    value: AppLanguage.en,
+                    groupValue: settings.language,
+                    onChanged: (val) {
+                      if (val != null)
+                        notifier.state = settings.copyWith(language: val);
+                    },
+                  ),
+                  const Divider(),
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text(loc.themeSection,
+                        style: Theme.of(context).textTheme.titleMedium),
+                  ),
+                  RadioListTile<AppTheme>(
+                    title: Text(loc.themeSystem),
+                    value: AppTheme.system,
+                    groupValue: settings.theme,
+                    onChanged: (val) {
+                      if (val != null)
+                        notifier.state = settings.copyWith(theme: val);
+                    },
+                  ),
+                  RadioListTile<AppTheme>(
+                    title: Text(loc.themeLight),
+                    value: AppTheme.light,
+                    groupValue: settings.theme,
+                    onChanged: (val) {
+                      if (val != null)
+                        notifier.state = settings.copyWith(theme: val);
+                    },
+                  ),
+                  RadioListTile<AppTheme>(
+                    title: Text(loc.themeDark),
+                    value: AppTheme.dark,
+                    groupValue: settings.theme,
+                    onChanged: (val) {
+                      if (val != null)
+                        notifier.state = settings.copyWith(theme: val);
+                    },
+                  ),
+                  const Divider(),
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
                     child: Text(loc.pageDirectionSection,
                         style: Theme.of(context).textTheme.titleMedium),
                   ),
@@ -305,63 +362,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     _MobileNavIconSettingsList(
                         settings: settings, notifier: notifier),
                   ],
-                  const Divider(),
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Text(loc.themeSection,
-                        style: Theme.of(context).textTheme.titleMedium),
-                  ),
-                  RadioListTile<AppTheme>(
-                    title: Text(loc.themeSystem),
-                    value: AppTheme.system,
-                    groupValue: settings.theme,
-                    onChanged: (val) {
-                      if (val != null)
-                        notifier.state = settings.copyWith(theme: val);
-                    },
-                  ),
-                  RadioListTile<AppTheme>(
-                    title: Text(loc.themeLight),
-                    value: AppTheme.light,
-                    groupValue: settings.theme,
-                    onChanged: (val) {
-                      if (val != null)
-                        notifier.state = settings.copyWith(theme: val);
-                    },
-                  ),
-                  RadioListTile<AppTheme>(
-                    title: Text(loc.themeDark),
-                    value: AppTheme.dark,
-                    groupValue: settings.theme,
-                    onChanged: (val) {
-                      if (val != null)
-                        notifier.state = settings.copyWith(theme: val);
-                    },
-                  ),
-                  const Divider(),
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Text(loc.languageSection,
-                        style: Theme.of(context).textTheme.titleMedium),
-                  ),
-                  RadioListTile<AppLanguage>(
-                    title: Text(loc.languageJapanese),
-                    value: AppLanguage.ja,
-                    groupValue: settings.language,
-                    onChanged: (val) {
-                      if (val != null)
-                        notifier.state = settings.copyWith(language: val);
-                    },
-                  ),
-                  RadioListTile<AppLanguage>(
-                    title: Text(loc.languageEnglish),
-                    value: AppLanguage.en,
-                    groupValue: settings.language,
-                    onChanged: (val) {
-                      if (val != null)
-                        notifier.state = settings.copyWith(language: val);
-                    },
-                  ),
                 ],
               ),
             )));

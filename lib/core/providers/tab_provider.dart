@@ -400,6 +400,44 @@ class TabNotifier extends StateNotifier<TabState> {
     }
   }
 
+  // switchBook()（同フォルダ内の前後の本への横移動）専用。openBook()と違い
+  // 新しい履歴エントリをpushせず、現在位置のエントリを差し替える。本を
+  // 何冊渡っても履歴の深さが増えないため、戻るボタン(undo)は常に1回で
+  // 元のフォルダ（1つ上の階層）に戻れる
+  void switchBookInPlace(String bookId, String title,
+      {String? currentShelfId, String? currentPath, List<String>? segments}) {
+    final existingIndex = state.tabs.indexWhere((t) => t.bookId == bookId);
+    if (existingIndex != -1) return selectTab(existingIndex);
+
+    final newTabs = [...state.tabs];
+    final current = newTabs[state.currentIndex];
+    final resolvedShelfId = currentShelfId ?? current.shelfId;
+    final resolvedPath = currentPath ?? current.path;
+    final finalSegments = segments ??
+        (current.segments.isNotEmpty
+            ? [...current.segments.sublist(0, current.segments.length - 1), title]
+            : ['トップ', title]);
+
+    final newHistory = List<Map<String, dynamic>>.from(current.history);
+    newHistory[current.historyIndex] = {
+      'shelfId': resolvedShelfId,
+      'path': resolvedPath,
+      'title': title,
+      'segments': finalSegments,
+      'bookId': bookId,
+    };
+    newTabs[state.currentIndex] = TabItem(
+        id: current.id,
+        title: title,
+        bookId: bookId,
+        shelfId: resolvedShelfId,
+        path: resolvedPath,
+        segments: finalSegments,
+        history: newHistory,
+        historyIndex: current.historyIndex);
+    state = TabState(tabs: newTabs, currentIndex: state.currentIndex);
+  }
+
   void closeBook(TabItem currentTab) {
     final newSegs = List<String>.from(currentTab.segments);
     if (newSegs.length > 1) newSegs.removeLast();
@@ -427,6 +465,21 @@ class TabNotifier extends StateNotifier<TabState> {
     if (current.historyIndex > 0)
       _apply(
           current.history[current.historyIndex - 1], current.historyIndex - 1);
+  }
+
+  // マウス戻るボタン・モバイルの右スワイプ等、「1つ戻る」操作全般で使う
+  // 共通ロジック。タブ内履歴があれば undo() で辿り、無い場合（起動時に
+  // 本を直接開いたタブ等）のみ closeBook() で本を閉じる。undo()
+  // ではなく closeBook() を無条件に呼ぶと、closeBook() 自体が新しい
+  // 履歴エントリをpushするため、連続して呼び出すと直前に閉じた本を
+  // 再度開いてしまう不具合になるので注意
+  void goBack() {
+    final current = state.tabs[state.currentIndex];
+    if (current.historyIndex > 0) {
+      undo();
+    } else if (current.bookId != null) {
+      closeBook(current);
+    }
   }
 
   void redo() {

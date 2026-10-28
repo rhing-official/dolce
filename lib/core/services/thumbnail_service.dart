@@ -14,7 +14,7 @@ class ThumbnailService {
     try {
       final cacheDir = await getApplicationSupportDirectory();
       final thumbDir =
-          Directory(p.join(cacheDir.path, 'komichi', 'thumbnails'));
+          Directory(p.join(cacheDir.path, 'dolce', 'thumbnails'));
 
       if (!await thumbDir.exists()) {
         await thumbDir.create(recursive: true);

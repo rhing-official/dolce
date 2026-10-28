@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/tab_provider.dart';
 import '../utils/system_nav_bar_inset.dart';
+import 'interactive_swipe_back.dart';
 import 'mobile_nav_popup.dart';
 import 'tab_content_builder.dart';
 
@@ -21,14 +22,24 @@ class MobileShell extends ConsumerWidget {
     final bottomInset = MediaQuery.of(context).padding.bottom;
     if (bottomInset > 0) SystemNavBarInset.bottom = bottomInset;
 
+    final stack = IndexedStack(
+      index: tabState.currentIndex,
+      children: tabState.tabs.asMap().entries
+          .map<Widget>((entry) => buildTabContent(
+              entry.value, entry.key == tabState.currentIndex))
+          .toList(),
+    );
+
     return Scaffold(
-      body: IndexedStack(
-        index: tabState.currentIndex,
-        children: tabState.tabs.asMap().entries
-            .map<Widget>((entry) => buildTabContent(
-                entry.value, entry.key == tabState.currentIndex))
-            .toList(),
-      ),
+      // 右スワイプで「1つ戻る」操作。ビューア表示中は、ズーム時の左右パンや
+      // 本の切替（縦スワイプ）と競合する・意図しない画面へ飛ぶ不具合があった
+      // ため、ビューア以外のタブでのみ有効にする
+      body: isBookOpen
+          ? stack
+          : InteractiveSwipeBackTransition(
+              onBack: () => ref.read(tabProvider.notifier).goBack(),
+              child: stack,
+            ),
       bottomNavigationBar: isBookOpen ? null : const MobileNavPopup(),
     );
   }

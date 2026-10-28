@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:archive/archive.dart';
 import 'package:pdfx/pdfx.dart';
 import '../models/read_state.dart';
 import '../../library/providers/library_provider.dart';
+import '../../settings/providers/settings_provider.dart';
 import '../../library/models/book.dart';
 import '../../../core/providers/tab_provider.dart';
 import '../../../core/services/file_service.dart';
@@ -15,6 +17,10 @@ final viewerProvider =
         (ref, bookId) {
   return ViewerNotifier(ref, bookId);
 });
+
+// 自動めくりのON/OFF。書籍を移動すると別のViewerNotifierになるため、
+// 状態をここに持たせて移動先の書籍でも自動で再開できるようにする
+final autoPlayPrefProvider = StateProvider<bool>((ref) => false);
 
 class ViewerNotifier extends StateNotifier<ReadState> {
   final Ref ref;
@@ -28,6 +34,9 @@ class ViewerNotifier extends StateNotifier<ReadState> {
   Uint8List? _currentImageBytes; // ★ 現在の画像データを保持
 
   bool _initStarted = false;
+  Timer? _autoTimer;
+  // ズーム中などで一時的にめくりを見送る判定（ViewerScreen側から設定）
+  bool Function()? autoPageBlocked;
 
   ViewerNotifier(this.ref, this.bookId)
       : super(ReadState(
@@ -91,6 +100,7 @@ class ViewerNotifier extends StateNotifier<ReadState> {
       // ensureActive()経由でタブがアクティブになった時にだけここまで到達する
       // ため、ページ画像は即ロードしてよい
       _loadCurrentImage();
+      if (ref.read(autoPlayPrefProvider)) startAutoPlay();
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: '読み込み失敗');
     }
@@ -131,20 +141,29 @@ class ViewerNotifier extends StateNotifier<ReadState> {
   }
 
   void switchBook(bool next) {
+    // this.bookIdは生成時に固定されたfamilyキーであり、古いnotifier経由で
+    // 呼ばれた場合は古い本のIDのままになりうる。tabProviderの共有状態から
+    // 「現在実際に表示中の本」を都度読み直すことで、連続切り替え時に古い
+    // notifierが同じ本を再計算して空振りする不具合を防ぐ
+    stopAutoPlay(keepPref: true);
+    final tabState = ref.read(tabProvider);
+    final currentTabBookId =
+        tabState.tabs[tabState.currentIndex].bookId ?? bookId;
     final libraryState = ref.read(libraryProvider);
-    final currentBook = libraryState.books.firstWhere((b) => b.id == bookId);
+    final currentBook =
+        libraryState.books.firstWhere((b) => b.id == currentTabBookId);
     final shelfBooks = libraryState.books
         .where((b) =>
             b.shelfId == currentBook.shelfId &&
             bookFolderKey(b) == bookFolderKey(currentBook))
         .toList()
       ..sort((a, b) => SortUtils.compareBooks(a, b));
-    final currentIndex = shelfBooks.indexWhere((b) => b.id == bookId);
+    final currentIndex = shelfBooks.indexWhere((b) => b.id == currentBook.id);
     int nextIndex = next ? currentIndex + 1 : currentIndex - 1;
     if (nextIndex >= 0 && nextIndex < shelfBooks.length) {
       final nextBook = shelfBooks[nextIndex];
-      ref.read(tabProvider.notifier).openBook(
-          nextBook.id, nextBook.title, false,
+      ref.read(tabProvider.notifier).switchBookInPlace(
+          nextBook.id, nextBook.title,
           currentShelfId: nextBook.shelfId,
           currentPath: bookFolderKey(nextBook));
     }
@@ -156,16 +175,63 @@ class ViewerNotifier extends StateNotifier<ReadState> {
     if (state.totalPages > 0) {
       final clamped = page.clamp(0, state.totalPages - 1);
       state = state.copyWith(currentPage: clamped);
+      if (state.autoPlay) _scheduleAutoPage();
       _loadCurrentImage();
       ref.read(libraryProvider.notifier).updateReadProgress(
           bookId, clamped, clamped >= state.totalPages - 1);
     }
   }
 
+  // 自動ページめくり。毎回Timerを張り直すことで、手動操作時にもリセットされる
+  void startAutoPlay() {
+    if (state.totalPages == 0 || state.currentPage >= state.totalPages - 1) {
+      return;
+    }
+    ref.read(autoPlayPrefProvider.notifier).state = true;
+    state = state.copyWith(autoPlay: true);
+    _scheduleAutoPage();
+  }
+
+  // keepPref=true: 書籍移動やタブ非表示による一時停止。ユーザーのON設定は残す
+  void stopAutoPlay({bool keepPref = false}) {
+    if (!keepPref) ref.read(autoPlayPrefProvider.notifier).state = false;
+    _autoTimer?.cancel();
+    _autoTimer = null;
+    if (state.autoPlay) state = state.copyWith(autoPlay: false);
+  }
+
+  void toggleAutoPlay() => state.autoPlay ? stopAutoPlay() : startAutoPlay();
+
+  void _scheduleAutoPage() {
+    _autoTimer?.cancel();
+    final seconds = ref.read(settingsProvider).autoPageSeconds;
+    _autoTimer = Timer(Duration(seconds: seconds < 1 ? 1 : seconds), () {
+      if (!mounted || !state.autoPlay) return;
+      // 書籍移動・タブ切替で表示されなくなった場合は止める
+      // （移動先のNotifierが設定に従って再開する）
+      final tabState = ref.read(tabProvider);
+      if (tabState.tabs[tabState.currentIndex].bookId != bookId) {
+        stopAutoPlay(keepPref: true);
+        return;
+      }
+      if (state.currentPage >= state.totalPages - 1) {
+        stopAutoPlay();
+        return;
+      }
+      if (state.isLoading || (autoPageBlocked?.call() ?? false)) {
+        _scheduleAutoPage();
+        return;
+      }
+      nextPage();
+      if (state.currentPage >= state.totalPages - 1) stopAutoPlay();
+    });
+  }
+
   void toggleUI() => state = state.copyWith(showUI: !state.showUI);
 
   @override
   void dispose() {
+    _autoTimer?.cancel();
     _pdfDocument?.close();
     _cbzInputStream?.close();
     super.dispose();

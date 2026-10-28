@@ -23,7 +23,7 @@ class _PageSliderState extends ConsumerState<PageSlider> {
     final total = (readState.totalPages - 1).toDouble();
 
     return Slider(
-      value: current.clamp(0, total),
+      value: current.clamp(0.0, total),
       max: total,
       onChanged: (v) => setState(() => _draggingValue = v),
       onChangeEnd: (v) {

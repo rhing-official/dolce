@@ -54,4 +54,14 @@ class Book extends HiveObject {
   // デスクトップでは常にnullのままで、既存通りfilePathのdirnameを使う
   @HiveField(12)
   String? relPath;
+
+  // ★中身の変化検知用：同じfilePathのままファイルの中身だけ差し替えられた
+  // ケース（ComicInfo.xmlの追加・更新等）をsyncAllで検知するための基準値。
+  // 旧バージョンのデータには存在しないため、どちらもnullな間は「まだ基準値を
+  // 記録していない」ことを意味し、初回同期時に値の比較をせず黙って記録するだけにする
+  @HiveField(13)
+  int? fileSize;
+
+  @HiveField(14)
+  DateTime? fileModifiedAt;
 }

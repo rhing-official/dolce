@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>io.github.rhing_official.komichi</id>
-  <name>komichi</name>
+  <id>io.github.rhing_official.dolce</id>
+  <name>dolce</name>
   <summary>本と、二人きり — ローカルのPDF/CBZ電子書籍リーダー</summary>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>LicenseRef-proprietary</project_license>
@@ -10,7 +10,7 @@
   </developer>
   <description>
     <p>
-      komichi は PDF・CBZ 形式の電子書籍/コミックをローカルで管理・閲覧する
+      dolce は PDF・CBZ 形式の電子書籍/コミックをローカルで管理・閲覧する
       クロスプラットフォームリーダーです。クラウド同期は行わず、
       すべてのデータを端末内だけで完結させます。
     </p>
@@ -22,16 +22,16 @@
       <li>キーボード・マウス操作によるページめくり</li>
     </ul>
   </description>
-  <launchable type="desktop-id">io.github.rhing_official.komichi.desktop</launchable>
+  <launchable type="desktop-id">io.github.rhing_official.dolce.desktop</launchable>
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/rhing-official/komichi/main/docs/screenshots/main.png</image>
+      <image>https://raw.githubusercontent.com/rhing-official/dolce/main/docs/screenshots/main.png</image>
       <caption>本棚サイドバー（起動直後の画面）</caption>
     </screenshot>
   </screenshots>
   <content_rating type="oars-1.1"/>
-  <url type="homepage">https://github.com/rhing-official/komichi</url>
-  <url type="bugtracker">https://github.com/rhing-official/komichi/issues</url>
+  <url type="homepage">https://github.com/rhing-official/dolce</url>
+  <url type="bugtracker">https://github.com/rhing-official/dolce/issues</url>
   <categories>
     <category>Utility</category>
   </categories>

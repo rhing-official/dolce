@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,6 +21,29 @@ class HomePlaceholderScreen extends ConsumerStatefulWidget {
 
 class _HomePlaceholderScreenState extends ConsumerState<HomePlaceholderScreen> {
   final FocusNode _focusNode = FocusNode();
+
+  // shelf_screen.dartと同じ理由で、矢印キーの移動先はFlutterの既定の
+  // フォーカス移動(DirectionalFocusIntent)に任せず、このインデックスで
+  // 管理する
+  int? _highlightIndex;
+  int _columns = 1;
+  final Map<int, GlobalKey> _itemKeys = {};
+
+  void _moveHighlight(int length, int delta) {
+    if (length == 0) return;
+    setState(() {
+      _highlightIndex = _highlightIndex == null
+          ? 0
+          : (_highlightIndex! + delta).clamp(0, length - 1);
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _itemKeys[_highlightIndex]?.currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(ctx,
+            alignment: 0.5, duration: const Duration(milliseconds: 150));
+      }
+    });
+  }
 
   // フォーカスはタブがアクティブになった時と画面内クリック時のみ取得する。
   // buildのたびにrequestFocusすると、サイドバーの検索欄など他所にフォーカスが
@@ -53,14 +77,48 @@ class _HomePlaceholderScreenState extends ConsumerState<HomePlaceholderScreen> {
       ..sort((a, b) => SortUtils.compareNatural(a.name, b.name));
     final allIds = shelves.map((s) => s.id).toList();
 
+    void activateHighlighted() {
+      final idx = _highlightIndex;
+      if (idx == null || idx >= shelves.length) return;
+      final shelf = shelves[idx];
+      ref.read(tabProvider.notifier).navigateTo(shelf.id,
+          path: shelfRootPath(shelf),
+          title: shelf.name,
+          segments: ['トップ', shelf.name]);
+    }
+
     return Focus(
       focusNode: _focusNode,
       autofocus: true,
+      descendantsAreFocusable: false,
       onKeyEvent: (node, event) {
         if (event is! KeyDownEvent) return KeyEventResult.ignored;
-        if (HardwareKeyboard.instance.isControlPressed &&
-            event.logicalKey == LogicalKeyboardKey.keyA) {
+        final key = event.logicalKey;
+        final isCtrl = HardwareKeyboard.instance.isControlPressed;
+        if (isCtrl && key == LogicalKeyboardKey.keyA) {
           ref.read(selectionProvider.notifier).selectAll(allIds);
+          return KeyEventResult.handled;
+        }
+        if (!isCtrl && key == LogicalKeyboardKey.arrowDown) {
+          _moveHighlight(shelves.length, _columns);
+          return KeyEventResult.handled;
+        }
+        if (!isCtrl && key == LogicalKeyboardKey.arrowUp) {
+          _moveHighlight(shelves.length, -_columns);
+          return KeyEventResult.handled;
+        }
+        if (!isCtrl && key == LogicalKeyboardKey.arrowRight) {
+          _moveHighlight(shelves.length, 1);
+          return KeyEventResult.handled;
+        }
+        if (!isCtrl && key == LogicalKeyboardKey.arrowLeft) {
+          _moveHighlight(shelves.length, -1);
+          return KeyEventResult.handled;
+        }
+        if (key == LogicalKeyboardKey.enter ||
+            key == LogicalKeyboardKey.numpadEnter ||
+            key == LogicalKeyboardKey.space) {
+          activateHighlighted();
           return KeyEventResult.handled;
         }
         return KeyEventResult.ignored;
@@ -78,7 +136,10 @@ class _HomePlaceholderScreenState extends ConsumerState<HomePlaceholderScreen> {
                           .primary
                           .withOpacity(0.4)),
                   const SizedBox(height: 16),
-                  Text(AppLocalizations.of(context)!.noShelvesYet,
+                  Text(
+                      state.isLoading
+                          ? AppLocalizations.of(context)!.addingShelf
+                          : AppLocalizations.of(context)!.noShelvesYet,
                       style: TextStyle(
                           fontSize: 14,
                           color: Theme.of(context)
@@ -87,17 +148,25 @@ class _HomePlaceholderScreenState extends ConsumerState<HomePlaceholderScreen> {
                               .withOpacity(0.6))),
                 ]),
               )
-            : GridView.builder(
-                padding: const EdgeInsets.all(24),
-                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                    maxCrossAxisExtent: 220,
-                    childAspectRatio: 0.7,
-                    crossAxisSpacing: 20,
-                    mainAxisSpacing: 20),
-                itemCount: shelves.length,
-                itemBuilder: (context, index) => _ShelfCard(
-                    shelf: shelves[index], index: index, allIds: allIds),
-              ),
+            : LayoutBuilder(builder: (context, constraints) {
+                final cols = ((constraints.maxWidth - 48) / 240).ceil();
+                _columns = cols < 1 ? 1 : cols;
+                return GridView.builder(
+                  padding: const EdgeInsets.all(24),
+                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                      maxCrossAxisExtent: 220,
+                      childAspectRatio: 0.7,
+                      crossAxisSpacing: 20,
+                      mainAxisSpacing: 20),
+                  itemCount: shelves.length,
+                  itemBuilder: (context, index) => _ShelfCard(
+                      key: _itemKeys.putIfAbsent(index, () => GlobalKey()),
+                      shelf: shelves[index],
+                      index: index,
+                      allIds: allIds,
+                      highlighted: index == _highlightIndex),
+                );
+              }),
       ),
     );
   }
@@ -107,14 +176,39 @@ class _ShelfCard extends ConsumerStatefulWidget {
   final Shelf shelf;
   final int index;
   final List<String> allIds;
+  final bool highlighted;
   const _ShelfCard(
-      {required this.shelf, required this.index, required this.allIds});
+      {super.key,
+      required this.shelf,
+      required this.index,
+      required this.allIds,
+      this.highlighted = false});
   @override
   ConsumerState<_ShelfCard> createState() => _ShelfCardState();
 }
 
 class _ShelfCardState extends ConsumerState<_ShelfCard> {
   bool _hover = false;
+
+  // 表紙スタックのサムネイルが1枚ずつ非同期にデコードされて次々と
+  // ポップインして見える(ちらつき)のを防ぐため、全サムネイルの
+  // precacheが完了するまでスタック表示自体を保留する
+  List<String> _precachingPaths = const [];
+  bool _thumbsReady = false;
+
+  void _ensureThumbsPrecached(List<String> paths) {
+    if (listEquals(_precachingPaths, paths)) return;
+    _precachingPaths = paths;
+    _thumbsReady = paths.isEmpty;
+    if (paths.isEmpty) return;
+    Future.wait(paths.map((path) =>
+            precacheImage(FileImage(File(path)), context).catchError((_) {})))
+        .then((_) {
+      if (mounted && listEquals(_precachingPaths, paths)) {
+        setState(() => _thumbsReady = true);
+      }
+    });
+  }
 
   Future<void> _showShelfMenu(Offset globalPosition) async {
     final loc = AppLocalizations.of(context)!;
@@ -130,7 +224,7 @@ class _ShelfCardState extends ConsumerState<_ShelfCard> {
                 ? loc.removeFromFavorites
                 : loc.addToFavorites)),
         PopupMenuItem(value: 'newtab', child: Text(loc.openInNewTab)),
-        PopupMenuItem(value: 'delete', child: Text(loc.delete)),
+        PopupMenuItem(value: 'exclude', child: Text(loc.excludeShelf)),
       ],
     );
     if (!mounted) return;
@@ -138,8 +232,25 @@ class _ShelfCardState extends ConsumerState<_ShelfCard> {
       case 'favorite':
         ref.read(libraryProvider.notifier).toggleShelfFavorite(widget.shelf);
         break;
-      case 'delete':
-        ref.read(libraryProvider.notifier).removeShelf(widget.shelf.id);
+      case 'exclude':
+        final confirm = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text(loc.excludeShelfTitle),
+            content: Text(loc.excludeShelfConfirm(widget.shelf.name)),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: Text(loc.cancel)),
+              TextButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: Text(loc.excludeShelf)),
+            ],
+          ),
+        );
+        if (confirm == true && mounted) {
+          ref.read(libraryProvider.notifier).removeShelf(widget.shelf.id);
+        }
         break;
       case 'newtab':
         ref.read(tabProvider.notifier).navigateTo(widget.shelf.id,
@@ -162,13 +273,24 @@ class _ShelfCardState extends ConsumerState<_ShelfCard> {
         .toList()
       ..sort((a, b) => SortUtils.compareBooks(a, b));
     final thumbBooks = booksInShelf.take(5).toList().reversed.toList();
+    _ensureThumbsPrecached(thumbBooks
+        .map((b) => b.thumbnailPath)
+        .whereType<String>()
+        .toList());
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
       child: Column(children: [
         Expanded(
-            child: Card(
+            child: Container(
+          decoration: BoxDecoration(
+              border: Border.all(
+                  color: widget.highlighted
+                      ? colorScheme.primary
+                      : Colors.transparent,
+                  width: 3)),
+          child: Card(
           shape: const RoundedRectangleBorder(),
           clipBehavior: Clip.antiAlias,
           color: colorScheme.surfaceContainerHighest,
@@ -206,7 +328,7 @@ class _ShelfCardState extends ConsumerState<_ShelfCard> {
                   }
                 },
                 child: Stack(children: [
-                  if (thumbBooks.isEmpty)
+                  if (thumbBooks.isEmpty || !_thumbsReady)
                     Center(
                         child: Icon(Icons.folder,
                             size: 64, color: colorScheme.onSurfaceVariant))
@@ -222,6 +344,7 @@ class _ShelfCardState extends ConsumerState<_ShelfCard> {
                         child: b.thumbnailPath != null
                             ? Image.file(File(b.thumbnailPath!),
                                 fit: BoxFit.cover,
+                                gaplessPlayback: true,
                                 color: i < thumbBooks.length - 1
                                     ? Colors.black.withOpacity(0.3)
                                     : null,
@@ -271,6 +394,7 @@ class _ShelfCardState extends ConsumerState<_ShelfCard> {
               ),
             ),
           ),
+        ),
         )),
         Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),

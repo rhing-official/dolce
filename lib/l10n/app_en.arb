@@ -15,6 +15,7 @@
   "fileCount": "{count, plural, one{{count} file} other{{count} files}}",
 
   "noShelvesYet": "No bookshelves added yet",
+  "addingShelf": "Adding bookshelf…",
 
   "topPageTitle": "Top",
   "newTab": "New Tab",
@@ -57,11 +58,24 @@
 
   "deleteFolderTitle": "Delete Folder",
   "deleteFolderConfirm": "Delete all books in this folder?",
+  "deleteFailed": "Failed to delete the file",
+
+  "excludeShelf": "Exclude",
+  "excludeShelfTitle": "Exclude Bookshelf",
+  "excludeShelfConfirm": "Exclude \"{name}\" from dolce?\nThe actual files will not be deleted. To read it again, you'll need to add the folder as a bookshelf once more.",
 
   "jumpToFirstPage": "Go to First Page",
   "jumpToLastPage": "Go to Last Page",
   "nextBook": "Next Book",
   "previousBook": "Previous Book",
+  "autoPageSecondsUnit": "s",
+  "autoPageTooltip": "Auto page turn",
+  "autoPageStart": "Start auto page turn",
+  "autoPageStop": "Stop auto page turn",
+  "autoPageSecondsItem": "Every {seconds} s",
+  "@autoPageSecondsItem": {
+    "placeholders": {"seconds": {"type": "int"}}
+  },
   "orientationPortrait": "Portrait",
   "orientationLandscapeLeft": "Rotate Left 90°",
   "orientationLandscapeRight": "Rotate Right 90°",

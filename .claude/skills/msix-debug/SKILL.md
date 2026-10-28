@@ -1,6 +1,6 @@
 ---
 name: msix-debug
-description: Use when the user wants to build, locally install, or debug the Windows MSIX package (komichi.msix) before Microsoft Store submission — e.g. "MSIXをテストしたい", "MSIXが灰色画面になる", "Store提出前に確認したい", "Add-AppxPackageが失敗する".
+description: Use when the user wants to build, locally install, or debug the Windows MSIX package (dolce.msix) before Microsoft Store submission — e.g. "MSIXをテストしたい", "MSIXが灰色画面になる", "Store提出前に確認したい", "Add-AppxPackageが失敗する".
 ---
 
 # MSIX ローカルデバッグ手順
@@ -29,18 +29,18 @@ if (_config.signMsix && !_config.store) { ... }
    ```yaml
    store: false
    install_certificate: false   # 対話プロンプトが絡むので使わない。下記の手動手順を使う
-   certificate_path: C:\dev\komichi_test.pfx
+   certificate_path: C:\dev\dolce_test.pfx
    certificate_password: '1234'
    ```
 
 2. 公開者情報（`publisher`の値）と一致するSubjectで自己署名証明書を作成し、pfxとして書き出す（管理者権限不要、ここまではCurrentUserスコープで完結する）:
    ```powershell
    $cert = New-SelfSignedCertificate -Type Custom -Subject "CN=05798F0E-41EC-4FF9-BBAB-61384063660A" `
-     -KeyUsage DigitalSignature -FriendlyName "komichi test cert" `
+     -KeyUsage DigitalSignature -FriendlyName "dolce test cert" `
      -CertStoreLocation "Cert:\CurrentUser\My" `
      -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3", "2.5.29.19={text}")
    $pwd = ConvertTo-SecureString -String "1234" -Force -AsPlainText
-   Export-PfxCertificate -Cert "Cert:\CurrentUser\My\$($cert.Thumbprint)" -FilePath "C:\dev\komichi_test.pfx" -Password $pwd
+   Export-PfxCertificate -Cert "Cert:\CurrentUser\My\$($cert.Thumbprint)" -FilePath "C:\dev\dolce_test.pfx" -Password $pwd
    ```
    Subjectの`CN=...`は`pubspec.yaml`の`msix_config.publisher`と完全一致させること。ずれていると署名はできても`Add-AppxPackage`が別のエラーで弾く。
 
@@ -54,8 +54,8 @@ if (_config.signMsix && !_config.store) { ... }
    **これは自動化できない**。UAC同意はGUIダイアログであり、非対話シェル（CI・自動化ツール）からは絶対に完了させられない（`-Verb runAs`をスクリプトから呼んでも同様にブロックされる）。ユーザー自身が「管理者としてPowerShellを実行」してから、以下を手動で叩く必要がある:
    ```powershell
    $pwd = ConvertTo-SecureString -String "1234" -Force -AsPlainText
-   Import-PfxCertificate -FilePath "C:\dev\komichi_test.pfx" -CertStoreLocation Cert:\LocalMachine\Root -Password $pwd
-   Add-AppxPackage -Path build\windows\x64\runner\Release\komichi.msix
+   Import-PfxCertificate -FilePath "C:\dev\dolce_test.pfx" -CertStoreLocation Cert:\LocalMachine\Root -Password $pwd
+   Add-AppxPackage -Path build\windows\x64\runner\Release\dolce.msix
    ```
 
 5. インストールされたアプリはスタートメニューから起動する（タスクバーには自動で出ない）。
@@ -67,6 +67,8 @@ if (_config.signMsix && !_config.store) { ... }
 素のexeと紛らわしいので、以下で実際にインストールされているパッケージを確認できる:
 
 ```powershell
+# パッケージ名の検索文字列は "komichi" のまま。表示名はdolceに変わったが、
+# Microsoft Store継続性のためidentity_name（Rhing.komichi）は変更していない
 Get-AppxPackage -Name "*komichi*" | Format-List Name, PackageFullName, InstallLocation, Version, SignatureKind
 ```
 

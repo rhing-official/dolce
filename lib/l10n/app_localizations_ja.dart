@@ -18,7 +18,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get delete => '削除';
 
   @override
-  String get addFolder => 'フォルダを追加';
+  String get addFolder => 'ディレクトリを追加';
 
   @override
   String get openInNewTab => '別タブで開く';
@@ -42,6 +42,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get noShelvesYet => 'まだ本棚が追加されていません';
+
+  @override
+  String get addingShelf => '本棚の追加中です';
 
   @override
   String get topPageTitle => 'トップ';
@@ -85,7 +88,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get shortcutAltArrow => '履歴を戻る / 進む';
 
   @override
-  String get shortcutEsc => 'ビューアを閉じて元のフォルダに戻る';
+  String get shortcutEsc => 'ビューアを閉じて元のディレクトリに戻る';
 
   @override
   String get shortcutCtrlTab => '右 / 下のタブへ切り替え';
@@ -100,7 +103,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get shortcutCtrlW => '現在のタブを閉じる';
 
   @override
-  String get shortcutMiddleClick => 'タブを閉じる / 本・フォルダを新しいタブで開く';
+  String get shortcutMiddleClick => 'タブを閉じる / 本・ディレクトリを新しいタブで開く';
 
   @override
   String get shortcutCtrlI => '設定を開く';
@@ -115,7 +118,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get shortcutCtrlS => 'サイドバーの検索欄にフォーカス';
 
   @override
-  String get shortcutCtrlA => '表示中のフォルダ / ファイルを全選択';
+  String get shortcutCtrlA => '表示中のディレクトリ / ファイルを全選択';
 
   @override
   String get shortcutCtrlClick => '個別選択の追加 / 解除';
@@ -124,7 +127,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get shortcutShiftClick => '範囲選択（起点からクリック位置まで全て選択）';
 
   @override
-  String get shortcutF5 => 'フォルダを再スキャンして書籍一覧を更新';
+  String get shortcutF5 => 'ディレクトリを再スキャンして書籍一覧を更新';
 
   @override
   String get shortcutArrowLeftRight => '前 / 次ページ';
@@ -133,22 +136,36 @@ class AppLocalizationsJa extends AppLocalizations {
   String get shortcutCtrlArrowLeftRight => '最初 / 最後のページへ';
 
   @override
-  String get shortcutArrowUpDown => '同じフォルダ内の前の本 / 次の本を開く';
+  String get shortcutArrowUpDown => '同じディレクトリ内の前の本 / 次の本を開く';
 
   @override
   String get shortcutSpace => 'メニューバーの表示 / 非表示切り替え';
 
   @override
-  String get sidebarSearchHint => '書籍・フォルダを検索...';
+  String get sidebarSearchHint => '書籍・ディレクトリを検索...';
 
   @override
-  String get noSearchResults => '該当する書籍・フォルダが見つかりません';
+  String get noSearchResults => '該当する書籍・ディレクトリが見つかりません';
 
   @override
-  String get deleteFolderTitle => 'フォルダを削除';
+  String get deleteFolderTitle => 'ディレクトリを削除';
 
   @override
-  String get deleteFolderConfirm => 'このフォルダ内のすべての書籍を削除しますか？';
+  String get deleteFolderConfirm => 'このディレクトリ内のすべての書籍を削除しますか？';
+
+  @override
+  String get deleteFailed => 'ファイルの削除に失敗しました';
+
+  @override
+  String get excludeShelf => '除外';
+
+  @override
+  String get excludeShelfTitle => '本棚を除外';
+
+  @override
+  String excludeShelfConfirm(String name) {
+    return '「$name」をdolceから除外しますか？\n実際のファイルは削除されません。再度読み込むには本棚の追加からやり直してください。';
+  }
 
   @override
   String get jumpToFirstPage => '最初のページへ';
@@ -161,6 +178,23 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get previousBook => '前の本へ';
+
+  @override
+  String get autoPageSecondsUnit => '秒';
+
+  @override
+  String get autoPageTooltip => '自動送り';
+
+  @override
+  String get autoPageStart => '自動めくりを開始';
+
+  @override
+  String get autoPageStop => '自動めくりを停止';
+
+  @override
+  String autoPageSecondsItem(int seconds) {
+    return '$seconds秒ごと';
+  }
 
   @override
   String get orientationPortrait => '縦';
@@ -298,7 +332,7 @@ class AppLocalizationsJa extends AppLocalizations {
       'チェックを外したアイコンはポップアップ右端のメニューに収納されます。ドラッグで並び順を変更できます';
 
   @override
-  String get themeSection => 'テーマ設定';
+  String get themeSection => 'テーマ';
 
   @override
   String get themeSystem => 'システム設定に従う';

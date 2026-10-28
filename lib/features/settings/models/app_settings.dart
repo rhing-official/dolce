@@ -158,23 +158,23 @@ class AppSettings {
   @HiveField(2, defaultValue: AppTheme.system)
   final AppTheme theme;
 
-  @HiveField(3, defaultValue: SidebarPosition.left)
+  @HiveField(3, defaultValue: SidebarPosition.right)
   final SidebarPosition sidebarPosition;
 
   // ★終了時に読んでいた書籍。次回起動時にそのビューワーを自動で開くために使う
   @HiveField(4)
   final String? lastOpenBookId;
 
-  @HiveField(5, defaultValue: TabBarPosition.top)
+  @HiveField(5, defaultValue: TabBarPosition.left)
   final TabBarPosition tabBarPosition;
 
-  @HiveField(6, defaultValue: FullscreenBehavior.onViewerOnly)
+  @HiveField(6, defaultValue: FullscreenBehavior.alwaysOnLaunch)
   final FullscreenBehavior fullscreenBehavior;
 
   @HiveField(7, defaultValue: OuterEdgeElement.verticalTabs)
   final OuterEdgeElement outerEdgeElement;
 
-  @HiveField(8, defaultValue: LaunchTabBehavior.resumeLastBook)
+  @HiveField(8, defaultValue: LaunchTabBehavior.alwaysLibrary)
   final LaunchTabBehavior launchTabBehavior;
 
   // ★終了時に開いていたタブ全体（本棚・書籍・設定・お気に入りタブと現在の
@@ -201,6 +201,10 @@ class AppSettings {
 
   @HiveField(17, defaultValue: AppLanguage.ja)
   final AppLanguage language;
+
+  // ★追加：自動ページめくりの間隔（秒）
+  @HiveField(18, defaultValue: 5)
+  final int autoPageSeconds;
 
   // mobileNavIconOrderは新規インストール時のみkDefaultMobileNavIconOrderが
   // 初期値として使われるため、既にHiveへ保存済みの環境でアイコンを追加すると
@@ -229,12 +233,12 @@ class AppSettings {
   AppSettings({
     this.pageDirection = PageDirection.leftToNext,
     this.theme = AppTheme.system,
-    this.sidebarPosition = SidebarPosition.left,
+    this.sidebarPosition = SidebarPosition.right,
     this.lastOpenBookId,
-    this.tabBarPosition = TabBarPosition.top,
-    this.fullscreenBehavior = FullscreenBehavior.onViewerOnly,
+    this.tabBarPosition = TabBarPosition.left,
+    this.fullscreenBehavior = FullscreenBehavior.alwaysOnLaunch,
     this.outerEdgeElement = OuterEdgeElement.verticalTabs,
-    this.launchTabBehavior = LaunchTabBehavior.resumeLastBook,
+    this.launchTabBehavior = LaunchTabBehavior.alwaysLibrary,
     this.savedTabsJson,
     this.middleClickTabBehavior = MiddleClickTabBehavior.switchToNewTab,
     this.mobileNavIconOrder = kDefaultMobileNavIconOrder,
@@ -242,6 +246,7 @@ class AppSettings {
     this.screenOrientationLock = ScreenOrientationLock.portraitUp,
     this.settingsFavoritesOpenMode = SettingsFavoritesOpenMode.newTab,
     this.language = AppLanguage.ja,
+    this.autoPageSeconds = 5,
   });
 
   AppSettings copyWith({
@@ -261,6 +266,7 @@ class AppSettings {
     ScreenOrientationLock? screenOrientationLock,
     SettingsFavoritesOpenMode? settingsFavoritesOpenMode,
     AppLanguage? language,
+    int? autoPageSeconds,
   }) {
     return AppSettings(
       pageDirection: pageDirection ?? this.pageDirection,
@@ -283,6 +289,7 @@ class AppSettings {
       settingsFavoritesOpenMode:
           settingsFavoritesOpenMode ?? this.settingsFavoritesOpenMode,
       language: language ?? this.language,
+      autoPageSeconds: autoPageSeconds ?? this.autoPageSeconds,
     );
   }
 }

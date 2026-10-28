@@ -162,7 +162,10 @@ class _BookshelfSidebarState extends ConsumerState<BookshelfSidebar> {
                             dense: true,
                             leading: b.thumbnailPath != null
                                 ? Image.file(File(b.thumbnailPath!),
-                                    width: 24, height: 32, fit: BoxFit.cover)
+                                    width: 24,
+                                    height: 32,
+                                    fit: BoxFit.cover,
+                                    gaplessPlayback: true)
                                 : Icon(Icons.book,
                                     color: colorScheme.onSurface, size: 20),
                             title:
@@ -221,7 +224,10 @@ class _BookshelfSidebarState extends ConsumerState<BookshelfSidebar> {
                             dense: true,
                             leading: b.thumbnailPath != null
                                 ? Image.file(File(b.thumbnailPath!),
-                                    width: 24, height: 32, fit: BoxFit.cover)
+                                    width: 24,
+                                    height: 32,
+                                    fit: BoxFit.cover,
+                                    gaplessPlayback: true)
                                 : Icon(Icons.book,
                                     color: colorScheme.onSurface, size: 20),
                             title:

@@ -6,7 +6,7 @@
 
   "cancel": "キャンセル",
   "delete": "削除",
-  "addFolder": "フォルダを追加",
+  "addFolder": "ディレクトリを追加",
   "openInNewTab": "別タブで開く",
   "addToFavorites": "お気に入りに追加",
   "removeFromFavorites": "お気に入り解除",
@@ -20,6 +20,7 @@
   },
 
   "noShelvesYet": "まだ本棚が追加されていません",
+  "addingShelf": "本棚の追加中です",
 
   "topPageTitle": "トップ",
   "newTab": "新しいタブ",
@@ -42,35 +43,53 @@
   "shortcutCategoryViewer": "ビューア内",
 
   "shortcutAltArrow": "履歴を戻る / 進む",
-  "shortcutEsc": "ビューアを閉じて元のフォルダに戻る",
+  "shortcutEsc": "ビューアを閉じて元のディレクトリに戻る",
   "shortcutCtrlTab": "右 / 下のタブへ切り替え",
   "shortcutCtrlShiftTab": "左 / 上のタブへ切り替え",
   "shortcutCtrlT": "新しい本棚タブを開く",
   "shortcutCtrlW": "現在のタブを閉じる",
-  "shortcutMiddleClick": "タブを閉じる / 本・フォルダを新しいタブで開く",
+  "shortcutMiddleClick": "タブを閉じる / 本・ディレクトリを新しいタブで開く",
   "shortcutCtrlI": "設定を開く",
   "shortcutCtrlF": "お気に入りを開く",
   "shortcutF1": "情報を開く",
   "shortcutCtrlS": "サイドバーの検索欄にフォーカス",
-  "shortcutCtrlA": "表示中のフォルダ / ファイルを全選択",
+  "shortcutCtrlA": "表示中のディレクトリ / ファイルを全選択",
   "shortcutCtrlClick": "個別選択の追加 / 解除",
   "shortcutShiftClick": "範囲選択（起点からクリック位置まで全て選択）",
-  "shortcutF5": "フォルダを再スキャンして書籍一覧を更新",
+  "shortcutF5": "ディレクトリを再スキャンして書籍一覧を更新",
   "shortcutArrowLeftRight": "前 / 次ページ",
   "shortcutCtrlArrowLeftRight": "最初 / 最後のページへ",
-  "shortcutArrowUpDown": "同じフォルダ内の前の本 / 次の本を開く",
+  "shortcutArrowUpDown": "同じディレクトリ内の前の本 / 次の本を開く",
   "shortcutSpace": "メニューバーの表示 / 非表示切り替え",
 
-  "sidebarSearchHint": "書籍・フォルダを検索...",
-  "noSearchResults": "該当する書籍・フォルダが見つかりません",
+  "sidebarSearchHint": "書籍・ディレクトリを検索...",
+  "noSearchResults": "該当する書籍・ディレクトリが見つかりません",
 
-  "deleteFolderTitle": "フォルダを削除",
-  "deleteFolderConfirm": "このフォルダ内のすべての書籍を削除しますか？",
+  "deleteFolderTitle": "ディレクトリを削除",
+  "deleteFolderConfirm": "このディレクトリ内のすべての書籍を削除しますか？",
+  "deleteFailed": "ファイルの削除に失敗しました",
+
+  "excludeShelf": "除外",
+  "excludeShelfTitle": "本棚を除外",
+  "excludeShelfConfirm": "「{name}」をdolceから除外しますか？\n実際のファイルは削除されません。再度読み込むには本棚の追加からやり直してください。",
+  "@excludeShelfConfirm": {
+    "description": "本棚一覧カードの「除外」確認ダイアログの本文。実ファイルは消えず、本棚の登録だけを解除する旨を伝える",
+    "placeholders": {"name": {"type": "String"}}
+  },
 
   "jumpToFirstPage": "最初のページへ",
   "jumpToLastPage": "最後のページへ",
   "nextBook": "次の本へ",
   "previousBook": "前の本へ",
+  "autoPageSecondsUnit": "秒",
+  "autoPageTooltip": "自動送り",
+  "autoPageStart": "自動めくりを開始",
+  "autoPageStop": "自動めくりを停止",
+  "autoPageSecondsItem": "{seconds}秒ごと",
+  "@autoPageSecondsItem": {
+    "description": "自動ページめくりの間隔選択メニューの項目",
+    "placeholders": {"seconds": {"type": "int"}}
+  },
   "orientationPortrait": "縦",
   "orientationLandscapeLeft": "左に90度",
   "orientationLandscapeRight": "右に90度",
@@ -125,7 +144,7 @@
   "mobileNavIconsSection": "ナビゲーションポップアップの表示アイコン",
   "mobileNavIconsHint": "チェックを外したアイコンはポップアップ右端のメニューに収納されます。ドラッグで並び順を変更できます",
 
-  "themeSection": "テーマ設定",
+  "themeSection": "テーマ",
   "themeSystem": "システム設定に従う",
   "themeLight": "ライトモード",
   "themeDark": "ダークモード",

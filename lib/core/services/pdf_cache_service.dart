@@ -34,7 +34,7 @@ class PdfCacheService {
   Future<void> _renderPageToDisk(String filePath, int pageIdx) async {
     try {
       final tempDir = await getTemporaryDirectory();
-      final outPathBase = p.join(tempDir.path, 'komichi_p_$pageIdx');
+      final outPathBase = p.join(tempDir.path, 'dolce_p_$pageIdx');
       final imageFile = File('$outPathBase.png');
 
       if (!await imageFile.exists()) {
@@ -55,7 +55,7 @@ class PdfCacheService {
       final dir = Directory(tempDir.path);
       final files = await dir.list().toList();
       for (var f in files) {
-        if (f.path.contains('komichi_p_')) {
+        if (f.path.contains('dolce_p_')) {
           await f.delete();
         }
       }

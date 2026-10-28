@@ -1,8 +1,8 @@
-app-id: io.github.rhing_official.komichi
+app-id: io.github.rhing_official.dolce
 runtime: org.gnome.Platform
 runtime-version: '46'
 sdk: org.gnome.Sdk
-command: komichi
+command: dolce
 finish-args:
   - --share=ipc
   - --socket=fallback-x11
@@ -48,25 +48,25 @@ modules:
         tag: 4.2.2
 
   # 3. アプリ本体
-  - name: komichi
+  - name: dolce
     buildsystem: simple
     build-commands:
       # Flutterのリリースバイナリを /app/bin に配置
       - mkdir -p /app/bin
       - cp -r * /app/bin/
       # アイコンのインストール
-      - install -D io.github.rhing_official.komichi.png /app/share/icons/hicolor/512x512/apps/io.github.rhing_official.komichi.png
+      - install -D io.github.rhing_official.dolce.png /app/share/icons/hicolor/512x512/apps/io.github.rhing_official.dolce.png
       # デスクトップファイルのインストール
-      - install -D io.github.rhing_official.komichi.desktop /app/share/applications/io.github.rhing_official.komichi.desktop
+      - install -D io.github.rhing_official.dolce.desktop /app/share/applications/io.github.rhing_official.dolce.desktop
       # AppStreamメタデータのインストール
-      - install -D io.github.rhing_official.komichi.metainfo.xml /app/share/metainfo/io.github.rhing_official.komichi.metainfo.xml
+      - install -D io.github.rhing_official.dolce.metainfo.xml /app/share/metainfo/io.github.rhing_official.dolce.metainfo.xml
     sources:
       - type: dir
         path: build/linux/x64/release/bundle
       - type: file
-        path: komichi-icon-512.png
-        dest-filename: io.github.rhing_official.komichi.png
+        path: dolce-icon-512.png
+        dest-filename: io.github.rhing_official.dolce.png
       - type: file
-        path: io.github.rhing_official.komichi.desktop
+        path: io.github.rhing_official.dolce.desktop
       - type: file
-        path: io.github.rhing_official.komichi.metainfo.xml
+        path: io.github.rhing_official.dolce.metainfo.xml

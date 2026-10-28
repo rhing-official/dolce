@@ -15,11 +15,15 @@ class ScannedFile {
   final String ext; // 拡張子（ドット無し・小文字。例: "pdf"）。AndroidではURI文字列の
   // 末尾一致に頼らず、実際のファイル名から判定するためscan時に保持しておく
   final String? relPath; // Android専用：シェルフルートからの相対パス（例: "Sub/name.cbz"）
+  final int? size; // ファイルサイズ(バイト)。中身の変化検知に使う
+  final DateTime? modified; // 最終更新日時。取得不能な場合はnull（中身の変化検知に使う）
   const ScannedFile(
       {required this.path,
       required this.name,
       required this.ext,
-      this.relPath});
+      this.relPath,
+      this.size,
+      this.modified});
 }
 
 class FileService {
@@ -43,7 +47,7 @@ class FileService {
     } else {
       // 通常環境では file_picker を使用
       try {
-        path = await FilePicker.platform.getDirectoryPath(dialogTitle: 'フォルダを選択');
+        path = await FilePicker.platform.getDirectoryPath(dialogTitle: 'ディレクトリを選択');
       } catch (e) {
         path = null;
       }
@@ -62,7 +66,7 @@ class FileService {
           'zenity',
           '--file-selection',
           '--directory',
-          '--title=フォルダを選択',
+          '--title=ディレクトリを選択',
         ],
       );
       if (result.exitCode == 0) {
@@ -73,7 +77,7 @@ class FileService {
     } catch (e) {
       // flatpak-spawn が失敗した場合は file_picker にフォールバック
       try {
-        return await FilePicker.platform.getDirectoryPath(dialogTitle: 'フォルダを選択');
+        return await FilePicker.platform.getDirectoryPath(dialogTitle: 'ディレクトリを選択');
       } catch (_) {
         return null;
       }
@@ -93,10 +97,13 @@ class FileService {
         if (entity is File) {
           final ext = p.extension(entity.path).toLowerCase();
           if (ext == '.pdf' || ext == '.cbz' || ext == '.zip') {
+            final stat = await entity.stat();
             files.add(ScannedFile(
                 path: entity.path,
                 name: p.basenameWithoutExtension(entity.path),
-                ext: ext.substring(1)));
+                ext: ext.substring(1),
+                size: stat.size,
+                modified: stat.modified));
           }
         }
       }
@@ -133,7 +140,9 @@ class FileService {
               path: child.uri,
               name: p.basenameWithoutExtension(child.name),
               ext: ext.substring(1),
-              relPath: rel));
+              relPath: rel,
+              size: child.size,
+              modified: child.lastModifiedDate));
         }
       }
     }
@@ -189,15 +198,16 @@ class FileService {
     }
     try {
       final result = await Process.run('gio', ['trash', filePath]);
-      return result.exitCode == 0;
-    } catch (e) {
-      try {
-        final file = File(filePath);
-        if (await file.exists()) await file.delete();
-        return true;
-      } catch (_) {
-        return false;
-      }
+      if (result.exitCode == 0) return true;
+    } catch (_) {
+      // gioコマンド自体が無い環境ではここに来る。下のFile.delete()へフォールバック
+    }
+    try {
+      final file = File(filePath);
+      if (await file.exists()) await file.delete();
+      return true;
+    } catch (_) {
+      return false;
     }
   }
 

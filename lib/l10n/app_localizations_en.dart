@@ -50,6 +50,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noShelvesYet => 'No bookshelves added yet';
 
   @override
+  String get addingShelf => 'Adding bookshelf…';
+
+  @override
   String get topPageTitle => 'Top';
 
   @override
@@ -161,6 +164,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deleteFolderConfirm => 'Delete all books in this folder?';
 
   @override
+  String get deleteFailed => 'Failed to delete the file';
+
+  @override
+  String get excludeShelf => 'Exclude';
+
+  @override
+  String get excludeShelfTitle => 'Exclude Bookshelf';
+
+  @override
+  String excludeShelfConfirm(String name) {
+    return 'Exclude \"$name\" from dolce?\nThe actual files will not be deleted. To read it again, you\'ll need to add the folder as a bookshelf once more.';
+  }
+
+  @override
   String get jumpToFirstPage => 'Go to First Page';
 
   @override
@@ -171,6 +188,23 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get previousBook => 'Previous Book';
+
+  @override
+  String get autoPageSecondsUnit => 's';
+
+  @override
+  String get autoPageTooltip => 'Auto page turn';
+
+  @override
+  String get autoPageStart => 'Start auto page turn';
+
+  @override
+  String get autoPageStop => 'Stop auto page turn';
+
+  @override
+  String autoPageSecondsItem(int seconds) {
+    return 'Every $seconds s';
+  }
 
   @override
   String get orientationPortrait => 'Portrait';

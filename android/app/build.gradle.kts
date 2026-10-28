@@ -15,7 +15,7 @@ if (hasReleaseSigning) {
 }
 
 android {
-    namespace = "io.github.rhing.komichi"
+    namespace = "io.github.rhing.dolce"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -29,7 +29,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "io.github.rhing.komichi"
+        applicationId = "io.github.rhing.dolce"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

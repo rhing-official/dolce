@@ -7,6 +7,7 @@ import '../../features/library/views/mobile_tab_switcher.dart';
 import '../../features/settings/providers/settings_provider.dart';
 import '../../l10n/app_localizations.dart';
 import 'glass_panel.dart';
+import 'swipe_tab_switch_area.dart';
 
 const double kMobileNavPopupHeight = 52;
 
@@ -112,7 +113,9 @@ class MobileNavIconRow extends ConsumerWidget {
           onPressed: () => showModalBottomSheet(
               context: context,
               showDragHandle: true,
-              builder: (_) => const MobileTabSwitcher()),
+              isScrollControlled: true,
+              builder: (_) => const FractionallySizedBox(
+                  heightFactor: 0.75, child: MobileTabSwitcher())),
         );
       case 'favorites':
         return _NavAction(
@@ -151,33 +154,23 @@ class MobileNavIconRow extends ConsumerWidget {
     final color = iconColor ?? Theme.of(context).colorScheme.onSurface;
     final tabNotifier = ref.read(tabProvider.notifier);
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        for (final id in visibleIds)
-          id == 'tabCount'
-              ? GestureDetector(
-                  // タブ数アイコン上のスワイプでタブ切り替え。左スワイプで
-                  // 前のタブ、右スワイプで次のタブへジャンプする
-                  onHorizontalDragEnd: (details) {
-                    final velocity = details.primaryVelocity ?? 0;
-                    if (velocity < 0) {
-                      tabNotifier.previousTab();
-                    } else if (velocity > 0) {
-                      tabNotifier.nextTab();
-                    }
-                  },
-                  child: _NavIconButton(
-                      action: _actionFor(context, ref, id), color: color),
-                )
-              : _NavIconButton(
-                  action: _actionFor(context, ref, id), color: color),
-        if (hiddenIds.isNotEmpty)
-          _HamburgerButton(
-              hiddenIds: hiddenIds,
-              actionFor: (id) => _actionFor(context, ref, id),
-              color: color),
-      ],
+    return SwipeTabSwitchArea(
+      // ピル全体のどこをスワイプしてもタブ切り替えができるようにする。
+      // 左スワイプで前のタブ、右スワイプで次のタブへジャンプする
+      onSwipeLeft: tabNotifier.previousTab,
+      onSwipeRight: tabNotifier.nextTab,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          for (final id in visibleIds)
+            _NavIconButton(action: _actionFor(context, ref, id), color: color),
+          if (hiddenIds.isNotEmpty)
+            _HamburgerButton(
+                hiddenIds: hiddenIds,
+                actionFor: (id) => _actionFor(context, ref, id),
+                color: color),
+        ],
+      ),
     );
   }
 }
@@ -225,7 +218,13 @@ class _CountBadge extends StatelessWidget {
   }
 }
 
-class _HamburgerButton extends StatelessWidget {
+// 標準のPopupMenuButtonは「押す→離す」で開き、選択は別の新しいタップで
+// 行う（showMenu()が生成する別routeへは、ボタン押下時のポインタが
+// 引き継がれないため）。Androidネイティブのメニューによくある
+// 「押したまま指を動かし、項目の上で離して選択する」操作に対応するため、
+// Listenerで生のポインタイベントを追跡し、メニュー項目もOverlayEntryで
+// 自前に描画する
+class _HamburgerButton extends StatefulWidget {
   final List<String> hiddenIds;
   final _NavAction Function(String id) actionFor;
   final Color color;
@@ -233,25 +232,141 @@ class _HamburgerButton extends StatelessWidget {
       {required this.hiddenIds, required this.actionFor, required this.color});
 
   @override
-  Widget build(BuildContext context) {
-    return PopupMenuButton<String>(
-      tooltip: AppLocalizations.of(context)!.navMore,
-      icon: Icon(Icons.menu, size: 22, color: color),
-      itemBuilder: (context) => [
-        for (final id in hiddenIds)
-          PopupMenuItem<String>(
-            value: id,
-            child: Builder(builder: (context) {
-              final a = actionFor(id);
-              return Row(children: [
-                Icon(a.icon, size: 18),
-                const SizedBox(width: 12),
-                Text(a.label),
-              ]);
-            }),
+  State<_HamburgerButton> createState() => _HamburgerButtonState();
+}
+
+class _HamburgerButtonState extends State<_HamburgerButton> {
+  static const double _itemHeight = 44;
+  static const double _menuWidth = 220;
+
+  final GlobalKey _buttonKey = GlobalKey();
+  final ValueNotifier<int?> _hoverIndex = ValueNotifier(null);
+  OverlayEntry? _entry;
+  List<Rect> _itemRects = const [];
+
+  @override
+  void dispose() {
+    _entry?.remove();
+    _hoverIndex.dispose();
+    super.dispose();
+  }
+
+  void _closeMenu() {
+    _entry?.remove();
+    _entry = null;
+    _hoverIndex.value = null;
+  }
+
+  void _selectAndClose(int index) {
+    final action = widget.actionFor(widget.hiddenIds[index]);
+    _closeMenu();
+    action.onPressed?.call();
+  }
+
+  void _openMenu() {
+    final buttonBox =
+        _buttonKey.currentContext!.findRenderObject() as RenderBox;
+    final buttonTopLeft = buttonBox.localToGlobal(Offset.zero);
+    final buttonSize = buttonBox.size;
+    final screenSize = MediaQuery.of(context).size;
+
+    final menuHeight = widget.hiddenIds.length * _itemHeight;
+    var left = buttonTopLeft.dx + buttonSize.width - _menuWidth;
+    left = left.clamp(8.0, screenSize.width - _menuWidth - 8.0);
+    // ボトムナビゲーション上のボタンなので、メニューはボタンの上に開く
+    final top = buttonTopLeft.dy - menuHeight - 8;
+
+    _itemRects = [
+      for (var i = 0; i < widget.hiddenIds.length; i++)
+        Rect.fromLTWH(left, top + i * _itemHeight, _menuWidth, _itemHeight),
+    ];
+
+    _entry = OverlayEntry(builder: (context) {
+      final colorScheme = Theme.of(context).colorScheme;
+      return Stack(children: [
+        Positioned.fill(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _closeMenu,
           ),
-      ],
-      onSelected: (id) => actionFor(id).onPressed?.call(),
+        ),
+        Positioned(
+          left: left,
+          top: top,
+          width: _menuWidth,
+          child: Material(
+            elevation: 8,
+            borderRadius: BorderRadius.circular(12),
+            clipBehavior: Clip.antiAlias,
+            child: ValueListenableBuilder<int?>(
+              valueListenable: _hoverIndex,
+              builder: (context, hovered, _) => Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (var i = 0; i < widget.hiddenIds.length; i++)
+                    GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => _selectAndClose(i),
+                      child: Container(
+                        height: _itemHeight,
+                        width: _menuWidth,
+                        color: hovered == i
+                            ? colorScheme.primary.withValues(alpha: 0.15)
+                            : null,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Row(children: [
+                          Icon(widget.actionFor(widget.hiddenIds[i]).icon,
+                              size: 18),
+                          const SizedBox(width: 12),
+                          Text(widget.actionFor(widget.hiddenIds[i]).label),
+                        ]),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ]);
+    });
+    Overlay.of(context).insert(_entry!);
+  }
+
+  void _updateHover(Offset globalPosition) {
+    final index = _itemRects.indexWhere((r) => r.contains(globalPosition));
+    _hoverIndex.value = index == -1 ? null : index;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Listener(
+      onPointerDown: (event) {
+        if (_entry != null) {
+          _closeMenu();
+        } else {
+          _openMenu();
+        }
+      },
+      onPointerMove: (event) {
+        if (_entry != null) _updateHover(event.position);
+      },
+      onPointerUp: (event) {
+        if (_entry == null) return;
+        final hovered = _hoverIndex.value;
+        // 押した位置から指を動かさずに離した場合はメニューを開いたままにし、
+        // 続けて項目を別タップで選択できるようにする（押しっぱなしで
+        // ドラッグして離した場合のみ、その場で選択を確定する）
+        if (hovered != null) _selectAndClose(hovered);
+      },
+      child: Tooltip(
+        message: AppLocalizations.of(context)!.navMore,
+        child: SizedBox(
+          key: _buttonKey,
+          width: 48,
+          height: 48,
+          child: Icon(Icons.menu, size: 22, color: widget.color),
+        ),
+      ),
     );
   }
 }

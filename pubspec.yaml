@@ -1,4 +1,4 @@
-name: komichi
+name: dolce
 description: A local e-book reader for PDF and CBZ files.
 publish_to: 'none'
 version: 1.0.0+1
@@ -42,12 +42,12 @@ flutter:
   generate: true
 
 msix_config:
-  display_name: komichi
+  display_name: dolce
   publisher_display_name: Rhing
   identity_name: Rhing.komichi
   publisher: CN=05798F0E-41EC-4FF9-BBAB-61384063660A
   msix_version: 1.0.0.0
-  logo_path: komichi-icon-512.png
+  logo_path: dolce-icon-512.png
   capabilities: broadFileSystemAccess
   store: true
   install_certificate: false

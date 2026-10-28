@@ -22,19 +22,19 @@ class AppSettingsAdapter extends TypeAdapter<AppSettings> {
           : fields[0] as PageDirection,
       theme: fields[2] == null ? AppTheme.system : fields[2] as AppTheme,
       sidebarPosition: fields[3] == null
-          ? SidebarPosition.left
+          ? SidebarPosition.right
           : fields[3] as SidebarPosition,
       lastOpenBookId: fields[4] as String?,
       tabBarPosition:
-          fields[5] == null ? TabBarPosition.top : fields[5] as TabBarPosition,
+          fields[5] == null ? TabBarPosition.left : fields[5] as TabBarPosition,
       fullscreenBehavior: fields[6] == null
-          ? FullscreenBehavior.onViewerOnly
+          ? FullscreenBehavior.alwaysOnLaunch
           : fields[6] as FullscreenBehavior,
       outerEdgeElement: fields[7] == null
           ? OuterEdgeElement.verticalTabs
           : fields[7] as OuterEdgeElement,
       launchTabBehavior: fields[8] == null
-          ? LaunchTabBehavior.resumeLastBook
+          ? LaunchTabBehavior.alwaysLibrary
           : fields[8] as LaunchTabBehavior,
       savedTabsJson: fields[9] as String?,
       middleClickTabBehavior: fields[10] == null
@@ -63,13 +63,14 @@ class AppSettingsAdapter extends TypeAdapter<AppSettings> {
           ? SettingsFavoritesOpenMode.newTab
           : fields[16] as SettingsFavoritesOpenMode,
       language: fields[17] == null ? AppLanguage.ja : fields[17] as AppLanguage,
+      autoPageSeconds: fields[18] == null ? 5 : fields[18] as int,
     );
   }
 
   @override
   void write(BinaryWriter writer, AppSettings obj) {
     writer
-      ..writeByte(15)
+      ..writeByte(16)
       ..writeByte(0)
       ..write(obj.pageDirection)
       ..writeByte(2)
@@ -99,7 +100,9 @@ class AppSettingsAdapter extends TypeAdapter<AppSettings> {
       ..writeByte(16)
       ..write(obj.settingsFavoritesOpenMode)
       ..writeByte(17)
-      ..write(obj.language);
+      ..write(obj.language)
+      ..writeByte(18)
+      ..write(obj.autoPageSeconds);
   }
 
   @override

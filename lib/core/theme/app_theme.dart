@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-class KomichiTheme {
-  KomichiTheme._(); // インスタンス化禁止
+class DolceTheme {
+  DolceTheme._(); // インスタンス化禁止
 
   // ---- カラー定義 ----
   static const Color _primary = Color(0xFF8B5E3C); // 茶色（メイン）

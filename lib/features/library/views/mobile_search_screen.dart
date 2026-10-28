@@ -5,6 +5,7 @@ import '../providers/library_provider.dart';
 import '../../../core/providers/tab_provider.dart';
 import '../../../core/utils/library_search.dart';
 import '../../../core/utils/book_path_utils.dart';
+import '../../../l10n/app_localizations.dart';
 
 // デスクトップのサイドバー検索欄の代替。モバイルではサイドバー自体が無いため、
 // ポップアップの検索アイコンから独立した全画面ページとして開く
@@ -30,14 +31,15 @@ class _MobileSearchScreenState extends ConsumerState<MobileSearchScreen> {
     final state = ref.watch(libraryProvider);
     final results = searchLibrary(state, _query);
     final colorScheme = Theme.of(context).colorScheme;
+    final loc = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppBar(
         title: TextField(
           controller: _controller,
           autofocus: true,
-          decoration: const InputDecoration(
-              hintText: '書籍・フォルダを検索...', border: InputBorder.none),
+          decoration: InputDecoration(
+              hintText: loc.sidebarSearchHint, border: InputBorder.none),
           onChanged: (v) => setState(() => _query = v),
         ),
       ),
@@ -47,7 +49,7 @@ class _MobileSearchScreenState extends ConsumerState<MobileSearchScreen> {
                   style: TextStyle(color: colorScheme.onSurfaceVariant)))
           : (results.folders.isEmpty && results.books.isEmpty)
               ? Center(
-                  child: Text('該当する書籍・フォルダが見つかりません',
+                  child: Text(loc.noSearchResults,
                       style: TextStyle(color: colorScheme.onSurfaceVariant)))
               : ListView(children: [
                   for (final (shelf, path) in results.folders)
@@ -70,7 +72,10 @@ class _MobileSearchScreenState extends ConsumerState<MobileSearchScreen> {
                     ListTile(
                       leading: book.thumbnailPath != null
                           ? Image.file(File(book.thumbnailPath!),
-                              width: 32, height: 44, fit: BoxFit.cover)
+                              width: 32,
+                              height: 44,
+                              fit: BoxFit.cover,
+                              gaplessPlayback: true)
                           : Icon(Icons.book, color: colorScheme.onSurface),
                       title: Text(book.title, overflow: TextOverflow.ellipsis),
                       onTap: () {

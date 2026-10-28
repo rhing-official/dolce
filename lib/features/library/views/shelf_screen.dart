@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,6 +24,33 @@ class ShelfScreen extends ConsumerStatefulWidget {
 class _ShelfScreenState extends ConsumerState<ShelfScreen> {
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
+
+  // 矢印キーによる「現在の注目項目」インデックス。フォーカスは個々の
+  // カード(InkWell)には渡さず(descendantsAreFocusable: false)、この
+  // インデックスだけで移動先をハイライト表示する。カードにフォーカスを
+  // 渡す既定のFlutterのDirectionalFocusIntentに任せると、フォーカスが
+  // 乗ったカードのTooltipやホバー時のチェックボックス表示など、
+  // 矢印キーでの連続移動を妨げる副作用が起きるため
+  int? _highlightIndex;
+  int _columns = 1;
+  final Map<int, GlobalKey> _itemKeys = {};
+  String? _lastPath;
+
+  void _moveHighlight(int length, int delta) {
+    if (length == 0) return;
+    setState(() {
+      _highlightIndex = _highlightIndex == null
+          ? 0
+          : (_highlightIndex! + delta).clamp(0, length - 1);
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _itemKeys[_highlightIndex]?.currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(ctx,
+            alignment: 0.5, duration: const Duration(milliseconds: 150));
+      }
+    });
+  }
 
   // フォーカスはタブがアクティブになった時と画面内クリック時のみ取得する。
   // buildのたびにrequestFocusすると、サイドバーの検索欄など他所にフォーカスが
@@ -82,9 +110,31 @@ class _ShelfScreenState extends ConsumerState<ShelfScreen> {
 
     final allIds = [...subFolders, ...currentBooks.map((b) => b.id)];
 
+    if (_lastPath != currentPath) {
+      _lastPath = currentPath;
+      _highlightIndex = null;
+      _itemKeys.clear();
+    }
+
+    void activateHighlighted() {
+      final idx = _highlightIndex;
+      if (idx == null || idx >= allIds.length) return;
+      if (idx < subFolders.length) {
+        final path = subFolders[idx];
+        final fName = p.basename(path);
+        ref.read(tabProvider.notifier).navigateTo(widget.shelfId,
+            path: path, title: fName, segments: [...tab.segments, fName]);
+      } else {
+        final book = currentBooks[idx - subFolders.length];
+        ref.read(tabProvider.notifier).openBook(book.id, book.title, false,
+            segments: [...tab.segments, book.title]);
+      }
+    }
+
     return Focus(
       focusNode: _focusNode,
       autofocus: true,
+      descendantsAreFocusable: false,
       onKeyEvent: (node, event) {
         if (event is! KeyDownEvent) return KeyEventResult.ignored;
         final key = event.logicalKey;
@@ -110,35 +160,66 @@ class _ShelfScreenState extends ConsumerState<ShelfScreen> {
           ref.read(selectionProvider.notifier).selectAll(allIds);
           return KeyEventResult.handled;
         }
+        if (!isCtrl && key == LogicalKeyboardKey.arrowDown) {
+          _moveHighlight(allIds.length, _columns);
+          return KeyEventResult.handled;
+        }
+        if (!isCtrl && key == LogicalKeyboardKey.arrowUp) {
+          _moveHighlight(allIds.length, -_columns);
+          return KeyEventResult.handled;
+        }
+        if (!isCtrl && key == LogicalKeyboardKey.arrowRight) {
+          _moveHighlight(allIds.length, 1);
+          return KeyEventResult.handled;
+        }
+        if (!isCtrl && key == LogicalKeyboardKey.arrowLeft) {
+          _moveHighlight(allIds.length, -1);
+          return KeyEventResult.handled;
+        }
+        if (key == LogicalKeyboardKey.enter ||
+            key == LogicalKeyboardKey.numpadEnter ||
+            key == LogicalKeyboardKey.space) {
+          activateHighlighted();
+          return KeyEventResult.handled;
+        }
         return KeyEventResult.ignored;
       },
       child: Listener(
         behavior: HitTestBehavior.translucent,
         onPointerDown: (_) => _focusNode.requestFocus(),
         child: Scaffold(
-          body: GridView.builder(
-            controller: _scrollController,
-            padding: const EdgeInsets.all(24),
-            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                maxCrossAxisExtent: 220,
-                childAspectRatio: 0.7,
-                crossAxisSpacing: 20,
-                mainAxisSpacing: 20),
-            itemCount: subFolders.length + currentBooks.length,
-            itemBuilder: (context, index) {
-              if (index < subFolders.length) {
-                return _FolderItem(
-                    path: subFolders[index],
-                    shelfId: widget.shelfId,
+          body: LayoutBuilder(builder: (context, constraints) {
+            final cols = ((constraints.maxWidth - 48) / 240).ceil();
+            _columns = cols < 1 ? 1 : cols;
+            return GridView.builder(
+              controller: _scrollController,
+              padding: const EdgeInsets.all(24),
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                  maxCrossAxisExtent: 220,
+                  childAspectRatio: 0.7,
+                  crossAxisSpacing: 20,
+                  mainAxisSpacing: 20),
+              itemCount: subFolders.length + currentBooks.length,
+              itemBuilder: (context, index) {
+                final itemKey = _itemKeys.putIfAbsent(index, () => GlobalKey());
+                if (index < subFolders.length) {
+                  return _FolderItem(
+                      key: itemKey,
+                      path: subFolders[index],
+                      shelfId: widget.shelfId,
+                      index: index,
+                      allIds: allIds,
+                      highlighted: index == _highlightIndex);
+                }
+                return _BookItem(
+                    key: itemKey,
+                    book: currentBooks[index - subFolders.length],
                     index: index,
-                    allIds: allIds);
-              }
-              return _BookItem(
-                  book: currentBooks[index - subFolders.length],
-                  index: index,
-                  allIds: allIds);
-            },
-          ),
+                    allIds: allIds,
+                    highlighted: index == _highlightIndex);
+              },
+            );
+          }),
         ),
       ),
     );
@@ -194,11 +275,18 @@ Future<bool> _showBatchMenuIfApplicable({
       }
       break;
     case 'delete':
-      for (final b in selectedBooks) await notifier.removeBook(b.id);
+      var allSucceeded = true;
+      for (final b in selectedBooks) {
+        if (!await notifier.removeBook(b.id)) allSucceeded = false;
+      }
       for (final path in selectedFolderPaths) {
-        await notifier.removeFolder(shelfId, path);
+        if (!await notifier.removeFolder(shelfId, path)) allSucceeded = false;
       }
       ref.read(selectionProvider.notifier).clear();
+      if (!allSucceeded && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppLocalizations.of(context)!.deleteFailed)));
+      }
       break;
   }
   return true;
@@ -208,17 +296,40 @@ class _FolderItem extends ConsumerStatefulWidget {
   final String path, shelfId;
   final int index;
   final List<String> allIds;
+  final bool highlighted;
   const _FolderItem(
-      {required this.path,
+      {super.key,
+      required this.path,
       required this.shelfId,
       required this.index,
-      required this.allIds});
+      required this.allIds,
+      this.highlighted = false});
   @override
   ConsumerState<_FolderItem> createState() => _FolderItemState();
 }
 
 class _FolderItemState extends ConsumerState<_FolderItem> {
   bool _hover = false;
+
+  // 表紙スタックのサムネイルが1枚ずつ非同期にデコードされて次々と
+  // ポップインして見える(ちらつき)のを防ぐため、全サムネイルの
+  // precacheが完了するまでスタック表示自体を保留する
+  List<String> _precachingPaths = const [];
+  bool _thumbsReady = false;
+
+  void _ensureThumbsPrecached(List<String> paths) {
+    if (listEquals(_precachingPaths, paths)) return;
+    _precachingPaths = paths;
+    _thumbsReady = paths.isEmpty;
+    if (paths.isEmpty) return;
+    Future.wait(paths.map((path) =>
+            precacheImage(FileImage(File(path)), context).catchError((_) {})))
+        .then((_) {
+      if (mounted && listEquals(_precachingPaths, paths)) {
+        setState(() => _thumbsReady = true);
+      }
+    });
+  }
 
   Future<void> _removeFolder() async {
     final loc = AppLocalizations.of(context)!;
@@ -238,9 +349,13 @@ class _FolderItemState extends ConsumerState<_FolderItem> {
       ),
     );
     if (confirm == true) {
-      ref
+      final success = await ref
           .read(libraryProvider.notifier)
           .removeFolder(widget.shelfId, widget.path);
+      if (!success && mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(loc.deleteFailed)));
+      }
     }
   }
 
@@ -309,13 +424,26 @@ class _FolderItemState extends ConsumerState<_FolderItem> {
     final sortedBooks = booksInFolder.toList()
       ..sort((a, b) => SortUtils.compareBooks(a, b));
     final thumbBooks = sortedBooks.take(5).toList().reversed.toList();
+    _ensureThumbsPrecached(thumbBooks
+        .map((b) => b.thumbnailPath)
+        .whereType<String>()
+        .toList());
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
       child: Column(children: [
         Expanded(
-            child: Card(
+            child: Container(
+          // Card自体の枠線はサムネイル画像がカードいっぱいに描かれて隠れて
+          // しまうため、Cardの外側(デフォルトmarginの隙間)に枠を描く
+          decoration: BoxDecoration(
+              border: Border.all(
+                  color: widget.highlighted
+                      ? colorScheme.primary
+                      : Colors.transparent,
+                  width: 3)),
+          child: Card(
           shape: const RoundedRectangleBorder(),
           clipBehavior: Clip.antiAlias,
           color: colorScheme.surfaceContainerHighest,
@@ -359,7 +487,7 @@ class _FolderItemState extends ConsumerState<_FolderItem> {
                   }
                 },
                 child: Stack(children: [
-                  if (thumbBooks.isEmpty)
+                  if (thumbBooks.isEmpty || !_thumbsReady)
                     Center(
                         child: Icon(Icons.folder,
                             size: 64, color: colorScheme.onSurfaceVariant))
@@ -375,6 +503,7 @@ class _FolderItemState extends ConsumerState<_FolderItem> {
                         child: b.thumbnailPath != null
                             ? Image.file(File(b.thumbnailPath!),
                                 fit: BoxFit.cover,
+                                gaplessPlayback: true,
                                 color: i < thumbBooks.length - 1
                                     ? Colors.black.withOpacity(0.3)
                                     : null,
@@ -424,6 +553,7 @@ class _FolderItemState extends ConsumerState<_FolderItem> {
               ),
             ),
           ),
+        ),
         )),
         Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
@@ -448,8 +578,13 @@ class _BookItem extends ConsumerStatefulWidget {
   final Book book;
   final int index;
   final List<String> allIds;
+  final bool highlighted;
   const _BookItem(
-      {required this.book, required this.index, required this.allIds});
+      {super.key,
+      required this.book,
+      required this.index,
+      required this.allIds,
+      this.highlighted = false});
   @override
   ConsumerState<_BookItem> createState() => _BookItemState();
 }
@@ -490,7 +625,12 @@ class _BookItemState extends ConsumerState<_BookItem> {
         ref.read(libraryProvider.notifier).toggleBookFavorite(widget.book);
         break;
       case 'delete':
-        ref.read(libraryProvider.notifier).removeBook(widget.book.id);
+        final success =
+            await ref.read(libraryProvider.notifier).removeBook(widget.book.id);
+        if (!success && mounted) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(loc.deleteFailed)));
+        }
         break;
       case 'newtab':
         ref.read(tabProvider.notifier).openBook(
@@ -507,12 +647,20 @@ class _BookItemState extends ConsumerState<_BookItem> {
     final isChecked =
         ref.watch(selectionProvider).selectedIds.contains(widget.book.id);
     final segments = [...tab.segments, widget.book.title];
+    final colorScheme = Theme.of(context).colorScheme;
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
       child: Column(children: [
         Expanded(
-            child: Card(
+            child: Container(
+          decoration: BoxDecoration(
+              border: Border.all(
+                  color: widget.highlighted
+                      ? colorScheme.primary
+                      : Colors.transparent,
+                  width: 3)),
+          child: Card(
           clipBehavior: Clip.antiAlias,
           elevation: _hover ? 1 : 0,
           child: Stack(children: [
@@ -549,7 +697,8 @@ class _BookItemState extends ConsumerState<_BookItem> {
                       ? Image.file(File(widget.book.thumbnailPath!),
                           fit: BoxFit.contain,
                           width: double.infinity,
-                          height: double.infinity)
+                          height: double.infinity,
+                          gaplessPlayback: true)
                       : const Center(child: Icon(Icons.book, size: 64)),
                 ),
               ),
@@ -574,6 +723,7 @@ class _BookItemState extends ConsumerState<_BookItem> {
                   right: 4,
                   child: Icon(Icons.star, color: Colors.amber, size: 18)),
           ]),
+        ),
         )),
         Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),

@@ -85,7 +85,7 @@ class _InformationScreenState extends ConsumerState<InformationScreen> {
                 children: [
                   const SizedBox(height: 16),
                   const Center(
-                      child: Text('komichi',
+                      child: Text('dolce',
                           style: TextStyle(
                               fontSize: 22, fontWeight: FontWeight.bold))),
                   const SizedBox(height: 4),
@@ -106,7 +106,7 @@ class _InformationScreenState extends ConsumerState<InformationScreen> {
                       child: OutlinedButton(
                         onPressed: () => showLicensePage(
                             context: context,
-                            applicationName: 'komichi',
+                            applicationName: 'dolce',
                             applicationVersion: _version),
                         child: Text(loc.licensesButton),
                       ),

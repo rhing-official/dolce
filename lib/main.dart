@@ -85,7 +85,7 @@ void main() async {
   // 4. アプリ起動
   runApp(
     const ProviderScope(
-      child: KomichiApp(),
+      child: DolceApp(),
     ),
   );
 }

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,6 +24,29 @@ class FavoritesScreen extends ConsumerStatefulWidget {
 
 class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
   final FocusNode _focusNode = FocusNode();
+
+  // shelf_screen.dartと同じ理由で、矢印キーの移動先はFlutterの既定の
+  // フォーカス移動(DirectionalFocusIntent)に任せず、このインデックスで
+  // 管理する
+  int? _highlightIndex;
+  int _columns = 1;
+  final Map<int, GlobalKey> _itemKeys = {};
+
+  void _moveHighlight(int length, int delta) {
+    if (length == 0) return;
+    setState(() {
+      _highlightIndex = _highlightIndex == null
+          ? 0
+          : (_highlightIndex! + delta).clamp(0, length - 1);
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _itemKeys[_highlightIndex]?.currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(ctx,
+            alignment: 0.5, duration: const Duration(milliseconds: 150));
+      }
+    });
+  }
 
   // フォーカスはタブがアクティブになった時と画面内クリック時のみ取得する。
   // buildのたびにrequestFocusすると、サイドバーの検索欄など他所にフォーカスが
@@ -82,35 +106,88 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
                           .withOpacity(0.6))),
             ]),
           )
-        : GridView.builder(
-            padding: const EdgeInsets.all(24),
-            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                maxCrossAxisExtent: 220,
-                childAspectRatio: 0.7,
-                crossAxisSpacing: 20,
-                mainAxisSpacing: 20),
-            itemCount: favFolders.length + favBooks.length,
-            itemBuilder: (context, index) {
-              if (index < favFolders.length) {
-                final (shelf, path) = favFolders[index];
-                return _FavoriteFolderCard(
-                    shelf: shelf, path: path, index: index, allIds: allIds);
-              }
-              return _FavoriteBookCard(
-                  book: favBooks[index - favFolders.length],
-                  index: index,
-                  allIds: allIds);
-            },
-          );
+        : LayoutBuilder(builder: (context, constraints) {
+            final cols = ((constraints.maxWidth - 48) / 240).ceil();
+            _columns = cols < 1 ? 1 : cols;
+            return GridView.builder(
+              padding: const EdgeInsets.all(24),
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                  maxCrossAxisExtent: 220,
+                  childAspectRatio: 0.7,
+                  crossAxisSpacing: 20,
+                  mainAxisSpacing: 20),
+              itemCount: favFolders.length + favBooks.length,
+              itemBuilder: (context, index) {
+                final itemKey = _itemKeys.putIfAbsent(index, () => GlobalKey());
+                if (index < favFolders.length) {
+                  final (shelf, path) = favFolders[index];
+                  return _FavoriteFolderCard(
+                      key: itemKey,
+                      shelf: shelf,
+                      path: path,
+                      index: index,
+                      allIds: allIds,
+                      highlighted: index == _highlightIndex);
+                }
+                return _FavoriteBookCard(
+                    key: itemKey,
+                    book: favBooks[index - favFolders.length],
+                    index: index,
+                    allIds: allIds,
+                    highlighted: index == _highlightIndex);
+              },
+            );
+          });
+
+    void activateHighlighted() {
+      final idx = _highlightIndex;
+      if (idx == null || idx >= allIds.length) return;
+      if (idx < favFolders.length) {
+        final (shelf, path) = favFolders[idx];
+        final fName = folderDisplayName(path);
+        final relParts = relativeFolderSegments(path, shelf.folderPath);
+        ref.read(tabProvider.notifier).navigateTo(shelf.id,
+            path: path,
+            title: fName,
+            segments: ['トップ', shelf.name, ...relParts]);
+      } else {
+        final book = favBooks[idx - favFolders.length];
+        ref.read(tabProvider.notifier).openBook(book.id, book.title, false);
+      }
+    }
 
     return Focus(
       focusNode: _focusNode,
       autofocus: true,
+      descendantsAreFocusable: false,
       onKeyEvent: (node, event) {
         if (event is! KeyDownEvent) return KeyEventResult.ignored;
-        if (HardwareKeyboard.instance.isControlPressed &&
-            event.logicalKey == LogicalKeyboardKey.keyA) {
+        final key = event.logicalKey;
+        final isCtrl = HardwareKeyboard.instance.isControlPressed;
+        if (isCtrl && key == LogicalKeyboardKey.keyA) {
           ref.read(selectionProvider.notifier).selectAll(allIds);
+          return KeyEventResult.handled;
+        }
+        if (!isCtrl && key == LogicalKeyboardKey.arrowDown) {
+          _moveHighlight(allIds.length, _columns);
+          return KeyEventResult.handled;
+        }
+        if (!isCtrl && key == LogicalKeyboardKey.arrowUp) {
+          _moveHighlight(allIds.length, -_columns);
+          return KeyEventResult.handled;
+        }
+        if (!isCtrl && key == LogicalKeyboardKey.arrowRight) {
+          _moveHighlight(allIds.length, 1);
+          return KeyEventResult.handled;
+        }
+        if (!isCtrl && key == LogicalKeyboardKey.arrowLeft) {
+          _moveHighlight(allIds.length, -1);
+          return KeyEventResult.handled;
+        }
+        if (key == LogicalKeyboardKey.enter ||
+            key == LogicalKeyboardKey.numpadEnter ||
+            key == LogicalKeyboardKey.space) {
+          activateHighlighted();
           return KeyEventResult.handled;
         }
         return KeyEventResult.ignored;
@@ -179,11 +256,14 @@ class _FavoriteFolderCard extends ConsumerStatefulWidget {
   final String path;
   final int index;
   final List<String> allIds;
+  final bool highlighted;
   const _FavoriteFolderCard(
-      {required this.shelf,
+      {super.key,
+      required this.shelf,
       required this.path,
       required this.index,
-      required this.allIds});
+      required this.allIds,
+      this.highlighted = false});
   @override
   ConsumerState<_FavoriteFolderCard> createState() =>
       _FavoriteFolderCardState();
@@ -191,6 +271,26 @@ class _FavoriteFolderCard extends ConsumerStatefulWidget {
 
 class _FavoriteFolderCardState extends ConsumerState<_FavoriteFolderCard> {
   bool _hover = false;
+
+  // 表紙スタックのサムネイルが1枚ずつ非同期にデコードされて次々と
+  // ポップインして見える(ちらつき)のを防ぐため、全サムネイルの
+  // precacheが完了するまでスタック表示自体を保留する
+  List<String> _precachingPaths = const [];
+  bool _thumbsReady = false;
+
+  void _ensureThumbsPrecached(List<String> paths) {
+    if (listEquals(_precachingPaths, paths)) return;
+    _precachingPaths = paths;
+    _thumbsReady = paths.isEmpty;
+    if (paths.isEmpty) return;
+    Future.wait(paths.map((path) =>
+            precacheImage(FileImage(File(path)), context).catchError((_) {})))
+        .then((_) {
+      if (mounted && listEquals(_precachingPaths, paths)) {
+        setState(() => _thumbsReady = true);
+      }
+    });
+  }
 
   Future<void> _showMenu(Offset globalPosition, List<String> segments) async {
     if (await _showFavBatchMenuIfApplicable(
@@ -247,13 +347,24 @@ class _FavoriteFolderCardState extends ConsumerState<_FavoriteFolderCard> {
     final sortedBooks = booksInFolder.toList()
       ..sort((a, b) => SortUtils.compareBooks(a, b));
     final thumbBooks = sortedBooks.take(5).toList().reversed.toList();
+    _ensureThumbsPrecached(thumbBooks
+        .map((b) => b.thumbnailPath)
+        .whereType<String>()
+        .toList());
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
       child: Column(children: [
         Expanded(
-            child: Card(
+            child: Container(
+          decoration: BoxDecoration(
+              border: Border.all(
+                  color: widget.highlighted
+                      ? colorScheme.primary
+                      : Colors.transparent,
+                  width: 3)),
+          child: Card(
           shape: const RoundedRectangleBorder(),
           clipBehavior: Clip.antiAlias,
           color: colorScheme.surfaceContainerHighest,
@@ -290,7 +401,7 @@ class _FavoriteFolderCardState extends ConsumerState<_FavoriteFolderCard> {
                   }
                 },
                 child: Stack(children: [
-                  if (thumbBooks.isEmpty)
+                  if (thumbBooks.isEmpty || !_thumbsReady)
                     Center(
                         child: Icon(Icons.folder,
                             size: 64, color: colorScheme.onSurfaceVariant))
@@ -306,6 +417,7 @@ class _FavoriteFolderCardState extends ConsumerState<_FavoriteFolderCard> {
                         child: b.thumbnailPath != null
                             ? Image.file(File(b.thumbnailPath!),
                                 fit: BoxFit.cover,
+                                gaplessPlayback: true,
                                 color: i < thumbBooks.length - 1
                                     ? Colors.black.withOpacity(0.3)
                                     : null,
@@ -354,6 +466,7 @@ class _FavoriteFolderCardState extends ConsumerState<_FavoriteFolderCard> {
               ),
             ),
           ),
+        ),
         )),
         Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
@@ -378,8 +491,13 @@ class _FavoriteBookCard extends ConsumerStatefulWidget {
   final Book book;
   final int index;
   final List<String> allIds;
+  final bool highlighted;
   const _FavoriteBookCard(
-      {required this.book, required this.index, required this.allIds});
+      {super.key,
+      required this.book,
+      required this.index,
+      required this.allIds,
+      this.highlighted = false});
   @override
   ConsumerState<_FavoriteBookCard> createState() => _FavoriteBookCardState();
 }
@@ -427,13 +545,20 @@ class _FavoriteBookCardState extends ConsumerState<_FavoriteBookCard> {
   Widget build(BuildContext context) {
     final isChecked =
         ref.watch(selectionProvider).selectedIds.contains(widget.book.id);
+    final colorScheme = Theme.of(context).colorScheme;
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
       child: Column(children: [
         Expanded(
-            child: Card(
-          shape: const RoundedRectangleBorder(),
+            child: Container(
+          decoration: BoxDecoration(
+              border: Border.all(
+                  color: widget.highlighted
+                      ? colorScheme.primary
+                      : Colors.transparent,
+                  width: 3)),
+          child: Card(
           clipBehavior: Clip.antiAlias,
           elevation: _hover ? 1 : 0,
           child: Stack(children: [
@@ -468,7 +593,8 @@ class _FavoriteBookCardState extends ConsumerState<_FavoriteBookCard> {
                       ? Image.file(File(widget.book.thumbnailPath!),
                           fit: BoxFit.contain,
                           width: double.infinity,
-                          height: double.infinity)
+                          height: double.infinity,
+                          gaplessPlayback: true)
                       : const Center(child: Icon(Icons.book, size: 64)),
                 ),
               ),
@@ -492,6 +618,7 @@ class _FavoriteBookCardState extends ConsumerState<_FavoriteBookCard> {
                 right: 4,
                 child: Icon(Icons.star, color: Colors.amber, size: 18)),
           ]),
+        ),
         )),
         Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),

@@ -21,11 +21,11 @@ jobs:
       - run: flutter pub get
       - run: flutter build windows --release
       - name: Zip build output
-        run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath komichi-windows.zip
+        run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath dolce-windows.zip
       - uses: actions/upload-artifact@v4
         with:
           name: windows-build
-          path: komichi-windows.zip
+          path: dolce-windows.zip
       - name: Build MSIX
         run: dart run msix:create
       - uses: actions/upload-artifact@v4
@@ -48,11 +48,11 @@ jobs:
       - run: flutter pub get
       - run: flutter build linux --release
       - name: Tar build output
-        run: tar -czf komichi-linux.tar.gz -C build/linux/x64/release/bundle .
+        run: tar -czf dolce-linux.tar.gz -C build/linux/x64/release/bundle .
       - uses: actions/upload-artifact@v4
         with:
           name: linux-build
-          path: komichi-linux.tar.gz
+          path: dolce-linux.tar.gz
 
   build-macos:
     runs-on: macos-latest
@@ -67,11 +67,11 @@ jobs:
       - name: Zip build output
         run: |
           app_path=$(find build/macos/Build/Products/Release -maxdepth 1 -name '*.app')
-          ditto -c -k --keepParent "$app_path" komichi-macos.zip
+          ditto -c -k --keepParent "$app_path" dolce-macos.zip
       - uses: actions/upload-artifact@v4
         with:
           name: macos-build
-          path: komichi-macos.zip
+          path: dolce-macos.zip
 
   build-android:
     runs-on: ubuntu-latest
@@ -110,11 +110,11 @@ jobs:
           keytool -list -keystore android/app/upload-keystore.jks \
             -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS"
       - run: flutter build apk --release
-      - run: mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/komichi-android.apk
+      - run: mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/dolce-android.apk
       - uses: actions/upload-artifact@v4
         with:
           name: android-build
-          path: build/app/outputs/flutter-apk/komichi-android.apk
+          path: build/app/outputs/flutter-apk/dolce-android.apk
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -127,8 +127,8 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           files: |
-            windows-build/komichi-windows.zip
+            windows-build/dolce-windows.zip
             windows-msix/*.msix
-            linux-build/komichi-linux.tar.gz
-            android-build/komichi-android.apk
-            macos-build/komichi-macos.zip
+            linux-build/dolce-linux.tar.gz
+            android-build/dolce-android.apk
+            macos-build/dolce-macos.zip

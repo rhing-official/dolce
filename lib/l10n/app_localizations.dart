@@ -119,7 +119,7 @@ abstract class AppLocalizations {
   /// No description provided for @addFolder.
   ///
   /// In ja, this message translates to:
-  /// **'フォルダを追加'**
+  /// **'ディレクトリを追加'**
   String get addFolder;
 
   /// No description provided for @openInNewTab.
@@ -163,6 +163,12 @@ abstract class AppLocalizations {
   /// In ja, this message translates to:
   /// **'まだ本棚が追加されていません'**
   String get noShelvesYet;
+
+  /// No description provided for @addingShelf.
+  ///
+  /// In ja, this message translates to:
+  /// **'本棚の追加中です'**
+  String get addingShelf;
 
   /// No description provided for @topPageTitle.
   ///
@@ -245,7 +251,7 @@ abstract class AppLocalizations {
   /// No description provided for @shortcutEsc.
   ///
   /// In ja, this message translates to:
-  /// **'ビューアを閉じて元のフォルダに戻る'**
+  /// **'ビューアを閉じて元のディレクトリに戻る'**
   String get shortcutEsc;
 
   /// No description provided for @shortcutCtrlTab.
@@ -275,7 +281,7 @@ abstract class AppLocalizations {
   /// No description provided for @shortcutMiddleClick.
   ///
   /// In ja, this message translates to:
-  /// **'タブを閉じる / 本・フォルダを新しいタブで開く'**
+  /// **'タブを閉じる / 本・ディレクトリを新しいタブで開く'**
   String get shortcutMiddleClick;
 
   /// No description provided for @shortcutCtrlI.
@@ -305,7 +311,7 @@ abstract class AppLocalizations {
   /// No description provided for @shortcutCtrlA.
   ///
   /// In ja, this message translates to:
-  /// **'表示中のフォルダ / ファイルを全選択'**
+  /// **'表示中のディレクトリ / ファイルを全選択'**
   String get shortcutCtrlA;
 
   /// No description provided for @shortcutCtrlClick.
@@ -323,7 +329,7 @@ abstract class AppLocalizations {
   /// No description provided for @shortcutF5.
   ///
   /// In ja, this message translates to:
-  /// **'フォルダを再スキャンして書籍一覧を更新'**
+  /// **'ディレクトリを再スキャンして書籍一覧を更新'**
   String get shortcutF5;
 
   /// No description provided for @shortcutArrowLeftRight.
@@ -341,7 +347,7 @@ abstract class AppLocalizations {
   /// No description provided for @shortcutArrowUpDown.
   ///
   /// In ja, this message translates to:
-  /// **'同じフォルダ内の前の本 / 次の本を開く'**
+  /// **'同じディレクトリ内の前の本 / 次の本を開く'**
   String get shortcutArrowUpDown;
 
   /// No description provided for @shortcutSpace.
@@ -353,26 +359,50 @@ abstract class AppLocalizations {
   /// No description provided for @sidebarSearchHint.
   ///
   /// In ja, this message translates to:
-  /// **'書籍・フォルダを検索...'**
+  /// **'書籍・ディレクトリを検索...'**
   String get sidebarSearchHint;
 
   /// No description provided for @noSearchResults.
   ///
   /// In ja, this message translates to:
-  /// **'該当する書籍・フォルダが見つかりません'**
+  /// **'該当する書籍・ディレクトリが見つかりません'**
   String get noSearchResults;
 
   /// No description provided for @deleteFolderTitle.
   ///
   /// In ja, this message translates to:
-  /// **'フォルダを削除'**
+  /// **'ディレクトリを削除'**
   String get deleteFolderTitle;
 
   /// No description provided for @deleteFolderConfirm.
   ///
   /// In ja, this message translates to:
-  /// **'このフォルダ内のすべての書籍を削除しますか？'**
+  /// **'このディレクトリ内のすべての書籍を削除しますか？'**
   String get deleteFolderConfirm;
+
+  /// No description provided for @deleteFailed.
+  ///
+  /// In ja, this message translates to:
+  /// **'ファイルの削除に失敗しました'**
+  String get deleteFailed;
+
+  /// No description provided for @excludeShelf.
+  ///
+  /// In ja, this message translates to:
+  /// **'除外'**
+  String get excludeShelf;
+
+  /// No description provided for @excludeShelfTitle.
+  ///
+  /// In ja, this message translates to:
+  /// **'本棚を除外'**
+  String get excludeShelfTitle;
+
+  /// 本棚一覧カードの「除外」確認ダイアログの本文。実ファイルは消えず、本棚の登録だけを解除する旨を伝える
+  ///
+  /// In ja, this message translates to:
+  /// **'「{name}」をdolceから除外しますか？\n実際のファイルは削除されません。再度読み込むには本棚の追加からやり直してください。'**
+  String excludeShelfConfirm(String name);
 
   /// No description provided for @jumpToFirstPage.
   ///
@@ -397,6 +427,36 @@ abstract class AppLocalizations {
   /// In ja, this message translates to:
   /// **'前の本へ'**
   String get previousBook;
+
+  /// No description provided for @autoPageSecondsUnit.
+  ///
+  /// In ja, this message translates to:
+  /// **'秒'**
+  String get autoPageSecondsUnit;
+
+  /// No description provided for @autoPageTooltip.
+  ///
+  /// In ja, this message translates to:
+  /// **'自動送り'**
+  String get autoPageTooltip;
+
+  /// No description provided for @autoPageStart.
+  ///
+  /// In ja, this message translates to:
+  /// **'自動めくりを開始'**
+  String get autoPageStart;
+
+  /// No description provided for @autoPageStop.
+  ///
+  /// In ja, this message translates to:
+  /// **'自動めくりを停止'**
+  String get autoPageStop;
+
+  /// 自動ページめくりの間隔選択メニューの項目
+  ///
+  /// In ja, this message translates to:
+  /// **'{seconds}秒ごと'**
+  String autoPageSecondsItem(int seconds);
 
   /// No description provided for @orientationPortrait.
   ///
@@ -665,7 +725,7 @@ abstract class AppLocalizations {
   /// No description provided for @themeSection.
   ///
   /// In ja, this message translates to:
-  /// **'テーマ設定'**
+  /// **'テーマ'**
   String get themeSection;
 
   /// No description provided for @themeSystem.
