@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import '../../features/library/models/book.dart';
 import '../../features/library/models/shelf.dart';
+import 'sort_utils.dart';
 
 // フォルダ単位のグルーピング（きょうだい本探索・お気に入りフォルダ・検索・
 // フォルダ削除）に使う値を、プラットフォームに応じて統一的に取り出す。
@@ -107,4 +108,36 @@ String folderDisplayName(String folderPath) {
 String shelfRootPath(Shelf shelf) {
   if (Platform.isAndroid) return '';
   return shelf.folderPath;
+}
+
+/// [books]（[folderPath]配下の本）を、そのフォルダを開いた時の表示順に並べて
+/// 先頭から[limit]冊返す。サブフォルダ（フォルダ名の自然順、中身も同じ規則で
+/// 再帰）を先に、その後にフォルダ直下の本を並べる。フォルダの表紙は
+/// この先頭の本を使う（全階層をフラットにタイトル順で並べると、画面に見える
+/// 先頭と食い違う）
+List<Book> booksInDisplayOrder(List<Book> books, String folderPath,
+    {int limit = 5}) {
+  final result = <Book>[];
+  final direct = <Book>[];
+  final groups = <String, List<Book>>{};
+  for (final b in books) {
+    final child = immediateChildFolder(b, folderPath);
+    if (child == null) {
+      direct.add(b);
+    } else {
+      (groups[child] ??= []).add(b);
+    }
+  }
+  final folders = groups.keys.toList()
+    ..sort((a, b) =>
+        SortUtils.compareNatural(folderDisplayName(a), folderDisplayName(b)));
+  for (final f in folders) {
+    if (result.length >= limit) return result;
+    result.addAll(booksInDisplayOrder(groups[f]!, f,
+        limit: limit - result.length));
+  }
+  if (result.length < limit) {
+    result.addAll(SortUtils.sortBooks(direct).take(limit - result.length));
+  }
+  return result;
 }

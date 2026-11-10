@@ -8,9 +8,9 @@ import 'l10n/app_localizations.dart';
 import 'features/library/models/shelf.dart';
 import 'core/utils/platform_utils.dart';
 import 'core/utils/book_path_utils.dart';
+import 'core/utils/library_sync_action.dart';
 import 'core/theme/block_theme.dart';
 import 'core/theme/chrome_motion.dart';
-import 'core/widgets/app_banner.dart';
 import 'core/widgets/glass_panel.dart';
 import 'core/widgets/tab_content_builder.dart';
 import 'core/widgets/mobile_shell.dart';
@@ -174,7 +174,7 @@ class _TabShellState extends ConsumerState<TabShell>
       }
     }
     if (key == LogicalKeyboardKey.f5) {
-      _syncFiles();
+      refreshLibrary(context, ref);
       return true;
     }
     if (key == LogicalKeyboardKey.f1) {
@@ -182,18 +182,6 @@ class _TabShellState extends ConsumerState<TabShell>
       return true;
     }
     return false;
-  }
-
-  Future<void> _syncFiles() async {
-    debugPrint('[Sync] F5が押されました');
-    final result = await ref.read(libraryProvider.notifier).syncAll();
-    if (!mounted) return;
-    showAppBanner(
-        context,
-        result.added == 0 && result.updated == 0 && result.removed == 0
-            ? '変更はありませんでした'
-            : '更新しました（追加${result.added}件 / 更新${result.updated}件 / 削除${result.removed}件）',
-        duration: const Duration(seconds: 3));
   }
 
   @override
@@ -295,7 +283,7 @@ class _TabShellState extends ConsumerState<TabShell>
                       const radius =
                           BorderRadius.vertical(bottom: Radius.circular(BlockTheme.radius));
                       return Positioned(
-                        top: -chromeBarHeight + chromeBarHeight * t,
+                        top: -(chromeBarHeight + _kHideExtra) * (1 - t),
                         left: 0,
                         right: 0,
                         // Opacityによるフェードは大きな半透明レイヤーの毎フレーム
@@ -423,6 +411,10 @@ class _MainArea extends ConsumerStatefulWidget {
 // ポインターが触れている間だけ幅いっぱいに開く（コンテンツの上に重ねて表示。レイアウトは動かさない）
 const double _kSidebarCollapsedWidth = 44;
 const double _kChromeBarHeight = 72;
+// 隠す時は枠線(太さ)と右下へはみ出す影の分も画面外へ送る（本体の寸法だけだと
+// 枠・影が画面端に細い線として残る）
+const double _kHideExtra =
+    4 + BlockTheme.borderWidth + 1; // BlockTheme.shadowOffsetの4 + 枠 + 余裕
 const double _kPathBarHeight = 34;
 // 垂直タブ使用時、サイドバーよりも外側（画面端側）に表示するタブ帯の幅
 const double _kVerticalTabWidth = 200;
@@ -735,9 +727,15 @@ class _MainAreaState extends ConsumerState<_MainArea>
               final sidebarPanel = Positioned(
                 top: chromeTop,
                 bottom: chromeBottom,
-                left: isLeft ? sidebarInset - dimSlide * sidebarEffectiveWidth : null,
+                left: isLeft
+                    ? sidebarInset -
+                        dimSlide * (sidebarEffectiveWidth + _kHideExtra)
+                    : null,
                 right:
-                    isLeft ? null : sidebarInset - dimSlide * sidebarEffectiveWidth,
+                    isLeft
+                        ? null
+                        : sidebarInset -
+                            dimSlide * (sidebarEffectiveWidth + _kHideExtra),
                 width: sidebarEffectiveWidth,
                 child: MouseRegion(
                   onEnter: (_) => _setHover(true),
@@ -792,11 +790,13 @@ class _MainAreaState extends ConsumerState<_MainArea>
                     top: chromeTop,
                     bottom: chromeBottom,
                     left: verticalTabsLeft
-                        ? tabStripInset - dimSlide * _kVerticalTabWidth
+                        ? tabStripInset -
+                            dimSlide * (_kVerticalTabWidth + _kHideExtra)
                         : null,
                     right: verticalTabsLeft
                         ? null
-                        : tabStripInset - dimSlide * _kVerticalTabWidth,
+                        : tabStripInset -
+                            dimSlide * (_kVerticalTabWidth + _kHideExtra),
                     width: _kVerticalTabWidth,
                     // Opacityは使わない（Space非表示時はスライドだけで画面外に
                     // 出るため、大きな半透明レイヤー合成を避けられる）
@@ -887,6 +887,21 @@ class _PathBar extends ConsumerWidget {
               onPressed: tab.historyIndex < tab.history.length - 1
                   ? notifier.redo
                   : null),
+          // 更新（F5と同じ）。同期中は押せず、アイコンの代わりに小さなスピナーを出す
+          Consumer(builder: (context, ref, _) {
+            final syncing =
+                ref.watch(libraryProvider.select((s) => s.isSyncing));
+            return IconButton(
+                tooltip: AppLocalizations.of(context)!.refresh,
+                icon: syncing
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.refresh, size: 18),
+                onPressed:
+                    syncing ? null : () => refreshLibrary(context, ref));
+          }),
           const SizedBox(width: 8),
           Expanded(
             child: GestureDetector(

@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/block_theme.dart';
 import '../../../core/theme/chrome_motion.dart';
+import '../../../core/widgets/skeleton.dart';
 import '../../../core/widgets/glass_panel.dart';
 import '../models/toc_entry.dart';
 import '../models/read_state.dart';
@@ -328,9 +329,7 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen>
                   child: SizedBox.expand(
                     child: notifier.epub != null
                         ? (notifier.chapterHtml == null
-                            ? const Center(
-                                child: CircularProgressIndicator(
-                                    color: Colors.white24))
+                            ? const TextSkeleton()
                             : EpubReader(
                                 key: ValueKey(state.currentPage),
                                 book: notifier.epub!,
@@ -365,8 +364,7 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen>
                                         width: double.infinity,
                                         height: double.infinity,
                                         gaplessPlayback: true)
-                                    : const CircularProgressIndicator(
-                                        color: Colors.white24)),
+                                    : const PageSkeleton()),
                           ),
                   ),
                 ),

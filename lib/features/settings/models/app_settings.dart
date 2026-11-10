@@ -154,10 +154,11 @@ enum AccentTextColor {
   white,
 }
 
-// モバイル用ナビゲーションポップアップに並べる9アイコンのデフォルト順序
+// モバイル用ナビゲーションポップアップに並べる10アイコンのデフォルト順序
 const List<String> kDefaultMobileNavIconOrder = [
   'back',
   'forward',
+  'refresh',
   'search',
   'tabCount',
   'settings',
@@ -172,6 +173,7 @@ const List<String> kDefaultMobileNavIconOrder = [
 // そのためデフォルトでは上記のうち6個だけを可視にし、残りはハンバーガー
 // メニューへ収納しておく
 const List<String> kDefaultMobileNavHiddenIcons = [
+  'addFolder',
   'addTab',
   'favorites',
   'information',
@@ -241,6 +243,20 @@ class AppSettings {
   @HiveField(20, defaultValue: AccentTextColor.auto)
   final AccentTextColor accentTextColor;
 
+  // ★追加：ユーザーが「＋」で登録したアクセント色（ARGB）
+  @HiveField(21, defaultValue: <int>[])
+  final List<int> customAccentColors;
+
+  // ★追加：ユーザーが一覧から外した組み込みプリセット色
+  @HiveField(22, defaultValue: <int>[])
+  final List<int> hiddenAccentPresets;
+
+  /// 組み込みプリセットの後ろに登録色を並べた一覧（重複・削除済みは除く）
+  List<int> get accentPalette => <int>{
+        ...kAccentPresets.where((c) => !hiddenAccentPresets.contains(c)),
+        ...customAccentColors,
+      }.toList();
+
   // mobileNavIconOrderは新規インストール時のみkDefaultMobileNavIconOrderが
   // 初期値として使われるため、既にHiveへ保存済みの環境でアイコンを追加すると
   // 既存ユーザーの保存済みリストには含まれず、設定画面から永久に表示できなく
@@ -284,6 +300,8 @@ class AppSettings {
     this.autoPageSeconds = 5,
     this.accentColor = 0xFFF08300,
     this.accentTextColor = AccentTextColor.auto,
+    this.customAccentColors = const [],
+    this.hiddenAccentPresets = const [],
   });
 
   AppSettings copyWith({
@@ -306,6 +324,8 @@ class AppSettings {
     int? autoPageSeconds,
     int? accentColor,
     AccentTextColor? accentTextColor,
+    List<int>? customAccentColors,
+    List<int>? hiddenAccentPresets,
   }) {
     return AppSettings(
       pageDirection: pageDirection ?? this.pageDirection,
@@ -331,6 +351,8 @@ class AppSettings {
       autoPageSeconds: autoPageSeconds ?? this.autoPageSeconds,
       accentColor: accentColor ?? this.accentColor,
       accentTextColor: accentTextColor ?? this.accentTextColor,
+      customAccentColors: customAccentColors ?? this.customAccentColors,
+      hiddenAccentPresets: hiddenAccentPresets ?? this.hiddenAccentPresets,
     );
   }
 }

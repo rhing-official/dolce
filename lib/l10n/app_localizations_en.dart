@@ -211,6 +211,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get accentColorSection => 'Accent colour';
 
   @override
+  String get accentColorCode => 'Colour code';
+
+  @override
+  String get accentColorFormatError => 'Enter a colour in #RRGGBB format';
+
+  @override
+  String get accentColorAddPreset => 'Add to presets';
+
+  @override
+  String get accentColorAddedBanner => 'Added to presets';
+
+  @override
+  String get accentColorCopiedBanner => 'Copied';
+
+  @override
+  String get accentPresetDeleteMessage => 'Delete this colour?';
+
+  @override
+  String get accentPresetDeleteConfirm => 'Delete';
+
+  @override
   String get accentTextColorSection => 'Text colour on accent';
 
   @override
@@ -244,6 +265,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get orientationPortraitDown => '180°';
+
+  @override
+  String get refresh => 'Refresh';
 
   @override
   String get navBack => 'Back';

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../core/theme/block_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/settings_provider.dart';
 import '../models/app_settings.dart';
+import '../../../core/utils/color_hex.dart';
 import '../../../core/utils/platform_utils.dart';
+import '../../../core/widgets/app_banner.dart';
 import '../../../core/widgets/mobile_nav_popup.dart';
 import '../../../l10n/app_localizations.dart';
 
@@ -125,14 +128,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                     child: Wrap(spacing: 14, runSpacing: 14, children: [
-                      for (final value in kAccentPresets)
+                      for (final value in settings.accentPalette)
                         _AccentSwatch(
                           color: Color(value),
                           selected: settings.accentColor == value,
                           onTap: () => notifier.state =
                               settings.copyWith(accentColor: value),
+                          // 長押し/右クリックで削除できる
+                          onDelete: () =>
+                              _confirmDeletePreset(context, ref, value),
                         ),
                     ]),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    child: _AccentHexField(),
                   ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
@@ -450,13 +460,45 @@ class _MobileNavIconSettingsList extends StatelessWidget {
   }
 }
 
+/// 登録したプリセット色の削除確認。OKで一覧から外す（現在のアクセントは変えない）
+Future<void> _confirmDeletePreset(
+    BuildContext context, WidgetRef ref, int value) async {
+  final loc = AppLocalizations.of(context)!;
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(loc.accentPresetDeleteMessage),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(loc.cancel)),
+        FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(loc.accentPresetDeleteConfirm)),
+      ],
+    ),
+  );
+  if (ok != true) return;
+  final settings = ref.read(settingsProvider);
+  ref.read(settingsProvider.notifier).state = settings.copyWith(
+      customAccentColors:
+          settings.customAccentColors.where((c) => c != value).toList(),
+      hiddenAccentPresets: kAccentPresets.contains(value)
+          ? [...settings.hiddenAccentPresets, value]
+          : null);
+}
+
 /// アクセントカラーの選択用スウォッチ（版画の角丸の箱。選択中はチェック付き）
 class _AccentSwatch extends StatelessWidget {
   final Color color;
   final bool selected;
   final VoidCallback onTap;
+  final VoidCallback? onDelete;
   const _AccentSwatch(
-      {required this.color, required this.selected, required this.onTap});
+      {required this.color,
+      required this.selected,
+      required this.onTap,
+      this.onDelete});
 
   @override
   Widget build(BuildContext context) {
@@ -467,6 +509,8 @@ class _AccentSwatch extends StatelessWidget {
         color: color,
         child: InkWell(
           onTap: onTap,
+          onLongPress: onDelete,
+          onSecondaryTap: onDelete,
           child: SizedBox(
             width: 44,
             height: 44,
@@ -481,5 +525,126 @@ class _AccentSwatch extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// アクセントカラーのカラーコード（#RRGGBB）入力欄。6桁そろった時点で即時に
+/// 反映し、Enterで確定する（形式が違う時はエラーを出す）。入力途中ではエラーを
+/// 出さない。透明度は扱わない（版画UIのアクセントは常に不透明）
+class _AccentHexField extends ConsumerStatefulWidget {
+  const _AccentHexField();
+
+  @override
+  ConsumerState<_AccentHexField> createState() => _AccentHexFieldState();
+}
+
+class _AccentHexFieldState extends ConsumerState<_AccentHexField> {
+  late final TextEditingController _controller = TextEditingController(
+      text: _hexOf(ref.read(settingsProvider).accentColor));
+  bool _showError = false;
+
+  static String _hexOf(int argb) =>
+      Color(argb).toHexString().replaceFirst('#', '');
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _apply() {
+    final color = tryParseHexColor(_controller.text);
+    if (color == null) return;
+    final settings = ref.read(settingsProvider);
+    if (settings.accentColor == color.toARGB32()) return;
+    ref.read(settingsProvider.notifier).state =
+        settings.copyWith(accentColor: color.toARGB32());
+  }
+
+  void _register() {
+    final loc = AppLocalizations.of(context)!;
+    final settings = ref.read(settingsProvider);
+    ref.read(settingsProvider.notifier).state = settings.copyWith(
+        customAccentColors: [
+          ...settings.customAccentColors,
+          settings.accentColor
+        ]);
+    showAppBanner(context, loc.accentColorAddedBanner);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context)!;
+    final scheme = Theme.of(context).colorScheme;
+    final current = ref.watch(settingsProvider);
+    final accent = Color(current.accentColor);
+    final registered = current.accentPalette.contains(current.accentColor);
+    // プリセットのタップなど、入力以外で色が変わった時は入力欄の文字も追従する
+    ref.listen<int>(settingsProvider.select((s) => s.accentColor),
+        (previous, next) {
+      if (tryParseHexColor(_controller.text)?.toARGB32() == next) return;
+      _controller.text = _hexOf(next);
+      setState(() => _showError = false);
+    });
+    return Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+      // 現在のアクセントのプレビュー
+      Padding(
+        padding: const EdgeInsets.only(right: 3, bottom: 7),
+        child: blockMaterialBox(context,
+            color: accent, child: const SizedBox(width: 44, height: 44)),
+      ),
+      const SizedBox(width: 16),
+      SizedBox(
+        width: 260,
+        child: BlockFieldFrame(
+          label: loc.accentColorCode,
+          child: TextField(
+            controller: _controller,
+            textCapitalization: TextCapitalization.characters,
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp('[0-9a-fA-F]')),
+              LengthLimitingTextInputFormatter(6),
+            ],
+            style: TextStyle(color: scheme.onSurface),
+            decoration: InputDecoration(
+              prefixText: '#',
+              hintText: 'F08300',
+              counterText: '',
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              errorText: _showError ? loc.accentColorFormatError : null,
+              // ボックスの中にコピーと「プリセットに登録」を並べる
+              suffixIcon: Row(mainAxisSize: MainAxisSize.min, children: [
+                IconButton(
+                  icon: const Icon(Icons.copy_outlined, size: 20),
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: accent.toHexString()));
+                    showAppBanner(context, loc.accentColorCopiedBanner);
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.add, size: 22),
+                  onPressed: registered ? null : _register,
+                ),
+              ]),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            ),
+            onChanged: (text) {
+              if (_showError) setState(() => _showError = false);
+              if (text.length == 6) _apply();
+            },
+            onSubmitted: (text) {
+              if (tryParseHexColor(text) == null) {
+                setState(() => _showError = true);
+              } else {
+                _apply();
+              }
+            },
+          ),
+        ),
+      ),
+    ]);
   }
 }

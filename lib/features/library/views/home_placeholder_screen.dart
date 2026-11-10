@@ -1,5 +1,6 @@
 import '../../../core/theme/block_thumb_card.dart';
 import '../../../core/utils/thumb_image.dart';
+import '../../../core/widgets/skeleton.dart';
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -152,7 +153,8 @@ class _HomePlaceholderScreenState extends ConsumerState<HomePlaceholderScreen> {
             : LayoutBuilder(builder: (context, constraints) {
                 final cols = ((constraints.maxWidth - 48) / 240).ceil();
                 _columns = cols < 1 ? 1 : cols;
-                return GridView.builder(
+                return SkeletonScope(
+                    child: GridView.builder(
                   padding: const EdgeInsets.all(24),
                   gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                       maxCrossAxisExtent: 220,
@@ -166,7 +168,7 @@ class _HomePlaceholderScreenState extends ConsumerState<HomePlaceholderScreen> {
                       index: index,
                       allIds: allIds,
                       highlighted: index == _highlightIndex),
-                );
+                ));
               }),
       ),
     );
@@ -271,9 +273,10 @@ class _ShelfCardState extends ConsumerState<_ShelfCard> {
         ref.watch(selectionProvider).selectedIds.contains(widget.shelf.id);
     final booksInShelf = state.books
         .where((b) => b.shelfId == widget.shelf.id)
-        .toList()
-      ..sort((a, b) => SortUtils.compareBooks(a, b));
-    final thumbBooks = booksInShelf.take(5).toList().reversed.toList();
+        .toList();
+    final thumbBooks = booksInDisplayOrder(
+            booksInShelf, shelfRootPath(widget.shelf))
+        .take(5).toList().reversed.toList();
     _ensureThumbsPrecached(thumbBooks
         .map((b) => b.thumbnailPath)
         .whereType<String>()
@@ -327,10 +330,13 @@ class _ShelfCardState extends ConsumerState<_ShelfCard> {
                   }
                 },
                 child: Stack(children: [
-                  if (thumbBooks.isEmpty || !_thumbsReady)
+                  if (thumbBooks.isEmpty)
                     Center(
                         child: Icon(Icons.folder,
                             size: 64, color: colorScheme.onSurfaceVariant))
+                  else if (!_thumbsReady)
+                    // 表紙の画像をデコードしている間はスケルトンを出す
+                    const Positioned.fill(child: SkeletonBox())
                   else
                     ...thumbBooks.asMap().entries.map((entry) {
                       final i = entry.key;
@@ -341,7 +347,7 @@ class _ShelfCardState extends ConsumerState<_ShelfCard> {
                         left: i * 8.0,
                         right: (thumbBooks.length - 1 - i) * 8.0,
                         child: b.thumbnailPath != null
-                            ? Image(image: thumbProvider(b.thumbnailPath!),
+                            ? Image(image: thumbProvider(b.thumbnailPath!), frameBuilder: thumbFrameBuilder(),
                                 fit: BoxFit.cover,
                                 gaplessPlayback: true,
                                 color: i < thumbBooks.length - 1

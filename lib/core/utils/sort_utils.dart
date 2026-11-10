@@ -1,12 +1,22 @@
 import '../../features/library/models/book.dart';
 
 class SortUtils {
-  static int compareBooks(Book a, Book b) {
-    if (a.number != null && b.number != null && a.number != b.number) {
-      return a.number!.compareTo(b.number!);
+  /// フォルダ内の本を並べ替えて返す。ComicInfo.xmlの巻数は、全冊が持っている
+  /// 時だけ並びに使う（1冊だけ持つ本が、タイトル順では後ろでも先頭に来て
+  /// 表紙に採用されてしまうのを防ぐ）
+  static List<Book> sortBooks(List<Book> books) {
+    final useNumber = books.isNotEmpty && books.every((b) => b.number != null);
+    return books..sort((a, b) => compareBooks(a, b, useNumber: useNumber));
+  }
+
+  static int compareBooks(Book a, Book b, {bool useNumber = true}) {
+    if (useNumber) {
+      if (a.number != null && b.number != null && a.number != b.number) {
+        return a.number!.compareTo(b.number!);
+      }
+      if (a.number != null && b.number == null) return -1;
+      if (a.number == null && b.number != null) return 1;
     }
-    if (a.number != null && b.number == null) return -1;
-    if (a.number == null && b.number != null) return 1;
     final byTitle = compareNatural(a.title, b.title);
     if (byTitle != 0) return byTitle;
     // タイトルが同名の本（別シリーズのフォルダにある巻数のみのファイル名

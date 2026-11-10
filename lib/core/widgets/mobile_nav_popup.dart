@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/tab_provider.dart';
+import '../utils/library_sync_action.dart';
 import '../../features/library/providers/library_provider.dart';
 import '../../features/library/views/mobile_search_screen.dart';
 import '../../features/library/views/mobile_tab_switcher.dart';
@@ -21,6 +22,7 @@ const double kMobileNavPopupHeight = 52;
   return switch (id) {
     'back' => (Icons.arrow_back, loc.navBack),
     'forward' => (Icons.arrow_forward, loc.navForward),
+    'refresh' => (Icons.refresh, loc.refresh),
     'search' => (Icons.search, loc.navSearch),
     'addTab' => (Icons.add, loc.navAddTab),
     'tabCount' => (Icons.tab_outlined, loc.navTabList),
@@ -95,6 +97,13 @@ class MobileNavIconRow extends ConsumerWidget {
             onPressed: tab.historyIndex < tab.history.length - 1
                 ? tabNotifier.redo
                 : null);
+      case 'refresh':
+        return _NavAction(
+            icon: icon,
+            label: label,
+            onPressed: libraryState.isSyncing
+                ? null
+                : () => refreshLibrary(context, ref));
       case 'search':
         return _NavAction(
             icon: icon,

@@ -161,7 +161,7 @@ class _BookshelfSidebarState extends ConsumerState<BookshelfSidebar> {
                           child: ListTile(
                             dense: true,
                             leading: b.thumbnailPath != null
-                                ? Image(image: thumbProvider(b.thumbnailPath!),
+                                ? Image(image: thumbProvider(b.thumbnailPath!), frameBuilder: thumbFrameBuilder(width: 24, height: 32),
                                     width: 24,
                                     height: 32,
                                     fit: BoxFit.cover,
@@ -223,7 +223,7 @@ class _BookshelfSidebarState extends ConsumerState<BookshelfSidebar> {
                           child: ListTile(
                             dense: true,
                             leading: b.thumbnailPath != null
-                                ? Image(image: thumbProvider(b.thumbnailPath!),
+                                ? Image(image: thumbProvider(b.thumbnailPath!), frameBuilder: thumbFrameBuilder(width: 24, height: 32),
                                     width: 24,
                                     height: 32,
                                     fit: BoxFit.cover,

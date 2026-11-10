@@ -470,6 +470,48 @@ abstract class AppLocalizations {
   /// **'アクセントカラー'**
   String get accentColorSection;
 
+  /// No description provided for @accentColorCode.
+  ///
+  /// In ja, this message translates to:
+  /// **'カラーコード'**
+  String get accentColorCode;
+
+  /// No description provided for @accentColorFormatError.
+  ///
+  /// In ja, this message translates to:
+  /// **'#RRGGBB の形式で入力してください'**
+  String get accentColorFormatError;
+
+  /// No description provided for @accentColorAddPreset.
+  ///
+  /// In ja, this message translates to:
+  /// **'プリセットに登録'**
+  String get accentColorAddPreset;
+
+  /// No description provided for @accentColorAddedBanner.
+  ///
+  /// In ja, this message translates to:
+  /// **'プリセットに登録しました'**
+  String get accentColorAddedBanner;
+
+  /// No description provided for @accentColorCopiedBanner.
+  ///
+  /// In ja, this message translates to:
+  /// **'コピーしました'**
+  String get accentColorCopiedBanner;
+
+  /// No description provided for @accentPresetDeleteMessage.
+  ///
+  /// In ja, this message translates to:
+  /// **'この色を削除しますか？'**
+  String get accentPresetDeleteMessage;
+
+  /// No description provided for @accentPresetDeleteConfirm.
+  ///
+  /// In ja, this message translates to:
+  /// **'削除する'**
+  String get accentPresetDeleteConfirm;
+
   /// No description provided for @accentTextColorSection.
   ///
   /// In ja, this message translates to:
@@ -535,6 +577,12 @@ abstract class AppLocalizations {
   /// In ja, this message translates to:
   /// **'180度'**
   String get orientationPortraitDown;
+
+  /// No description provided for @refresh.
+  ///
+  /// In ja, this message translates to:
+  /// **'更新'**
+  String get refresh;
 
   /// No description provided for @navBack.
   ///

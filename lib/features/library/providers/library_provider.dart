@@ -17,15 +17,25 @@ import '../../viewer/providers/viewer_provider.dart';
 class LibraryState {
   final List<Book> books;
   final List<Shelf> shelves;
+  // 本棚の追加（ディレクトリ選択〜登録）の最中
   final bool isLoading;
+  // ファイルの同期（スキャン・サムネ生成）の最中
+  final bool isSyncing;
   const LibraryState(
-      {this.books = const [], this.shelves = const [], this.isLoading = false});
+      {this.books = const [],
+      this.shelves = const [],
+      this.isLoading = false,
+      this.isSyncing = false});
   LibraryState copyWith(
-          {List<Book>? books, List<Shelf>? shelves, bool? isLoading}) =>
+          {List<Book>? books,
+          List<Shelf>? shelves,
+          bool? isLoading,
+          bool? isSyncing}) =>
       LibraryState(
           books: books ?? this.books,
           shelves: shelves ?? this.shelves,
-          isLoading: isLoading ?? this.isLoading);
+          isLoading: isLoading ?? this.isLoading,
+          isSyncing: isSyncing ?? this.isSyncing);
 }
 
 class LibraryNotifier extends StateNotifier<LibraryState> {
@@ -59,9 +69,13 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
   Future<({int added, int updated, int removed})> syncAll() {
     final running = _syncing;
     if (running != null) return running;
+    state = state.copyWith(isSyncing: true);
     final future = _syncAllImpl();
     _syncing = future;
-    return future.whenComplete(() => _syncing = null);
+    return future.whenComplete(() {
+      _syncing = null;
+      if (mounted) state = state.copyWith(isSyncing: false);
+    });
   }
 
   // 同じfilePathで重複登録されたBookを1冊に畳む（過去の並行同期で生じた重複の修復）。

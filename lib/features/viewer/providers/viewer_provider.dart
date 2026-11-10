@@ -279,8 +279,8 @@ class ViewerNotifier extends StateNotifier<ReadState> {
         .where((b) =>
             b.shelfId == currentBook.shelfId &&
             bookFolderKey(b) == bookFolderKey(currentBook))
-        .toList()
-      ..sort((a, b) => SortUtils.compareBooks(a, b));
+        .toList();
+    SortUtils.sortBooks(shelfBooks);
     final currentIndex = shelfBooks.indexWhere((b) => b.id == currentBook.id);
     int nextIndex = next ? currentIndex + 1 : currentIndex - 1;
     if (nextIndex >= 0 && nextIndex < shelfBooks.length) {

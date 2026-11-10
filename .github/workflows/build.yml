@@ -47,12 +47,16 @@ jobs:
       - run: flutter config --enable-linux-desktop
       - run: flutter pub get
       - run: flutter build linux --release
-      - name: Tar build output
-        run: tar -czf dolce-linux.tar.gz -C build/linux/x64/release/bundle .
+      - name: Build AppImage
+        run: |
+          sudo curl -fsSL -o /usr/local/bin/appimagetool \
+            https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+          sudo chmod +x /usr/local/bin/appimagetool
+          scripts/build-appimage.sh
       - uses: actions/upload-artifact@v4
         with:
           name: linux-build
-          path: dolce-linux.tar.gz
+          path: dolce-linux-x86_64.AppImage
 
   build-macos:
     runs-on: macos-latest
@@ -129,6 +133,6 @@ jobs:
           files: |
             windows-build/dolce-windows.zip
             windows-msix/*.msix
-            linux-build/dolce-linux.tar.gz
+            linux-build/dolce-linux-x86_64.AppImage
             android-build/dolce-android.apk
             macos-build/dolce-macos.zip

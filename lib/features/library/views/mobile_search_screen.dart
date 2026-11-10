@@ -71,7 +71,7 @@ class _MobileSearchScreenState extends ConsumerState<MobileSearchScreen> {
                   for (final book in results.books)
                     ListTile(
                       leading: book.thumbnailPath != null
-                          ? Image(image: thumbProvider(book.thumbnailPath!),
+                          ? Image(image: thumbProvider(book.thumbnailPath!), frameBuilder: thumbFrameBuilder(width: 32, height: 44),
                               width: 32,
                               height: 44,
                               fit: BoxFit.cover,

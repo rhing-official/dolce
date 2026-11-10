@@ -1,6 +1,7 @@
 import '../../../core/theme/block_thumb_card.dart';
 import '../../../core/widgets/app_banner.dart';
 import '../../../core/utils/thumb_image.dart';
+import '../../../core/widgets/skeleton.dart';
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -100,8 +101,8 @@ class _ShelfScreenState extends ConsumerState<ShelfScreen> {
     final shelfBooks = state.books.where((b) => b.shelfId == widget.shelfId);
     final currentBooks = shelfBooks
         .where((b) => bookIsAtFolder(b, currentPath))
-        .toList()
-      ..sort((a, b) => SortUtils.compareBooks(a, b));
+        .toList();
+    SortUtils.sortBooks(currentBooks);
     final subFolders = shelfBooks
         .map((b) => immediateChildFolder(b, currentPath))
         .whereType<String>()
@@ -193,7 +194,10 @@ class _ShelfScreenState extends ConsumerState<ShelfScreen> {
           body: LayoutBuilder(builder: (context, constraints) {
             final cols = ((constraints.maxWidth - 48) / 240).ceil();
             _columns = cols < 1 ? 1 : cols;
-            return GridView.builder(
+            // 同期中で表示する項目がまだ無い間は、カードの形のスケルトンを出す
+            if (state.isSyncing && allIds.isEmpty) return const SkeletonGrid();
+            return SkeletonScope(
+                child: GridView.builder(
               controller: _scrollController,
               padding: const EdgeInsets.all(24),
               gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
@@ -220,7 +224,7 @@ class _ShelfScreenState extends ConsumerState<ShelfScreen> {
                     allIds: allIds,
                     highlighted: index == _highlightIndex);
               },
-            );
+            ));
           }),
         ),
       ),
@@ -421,8 +425,9 @@ class _FolderItemState extends ConsumerState<_FolderItem> {
         orElse: () => state.shelves.first);
     final isAnyFavorite = currentShelf.favoriteFolders.contains(widget.path);
 
-    final sortedBooks = booksInFolder.toList()
-      ..sort((a, b) => SortUtils.compareBooks(a, b));
+    final sortedBooks =
+        booksInDisplayOrder(booksInFolder.toList(), widget.path);
+
     final thumbBooks = sortedBooks.take(5).toList().reversed.toList();
     _ensureThumbsPrecached(thumbBooks
         .map((b) => b.thumbnailPath)
@@ -485,10 +490,13 @@ class _FolderItemState extends ConsumerState<_FolderItem> {
                   }
                 },
                 child: Stack(children: [
-                  if (thumbBooks.isEmpty || !_thumbsReady)
+                  if (thumbBooks.isEmpty)
                     Center(
                         child: Icon(Icons.folder,
                             size: 64, color: colorScheme.onSurfaceVariant))
+                  else if (!_thumbsReady)
+                    // 表紙の画像をデコードしている間はスケルトンを出す
+                    const Positioned.fill(child: SkeletonBox())
                   else
                     ...thumbBooks.asMap().entries.map((entry) {
                       final i = entry.key;
@@ -499,7 +507,7 @@ class _FolderItemState extends ConsumerState<_FolderItem> {
                         left: i * 8.0,
                         right: (thumbBooks.length - 1 - i) * 8.0,
                         child: b.thumbnailPath != null
-                            ? Image(image: thumbProvider(b.thumbnailPath!),
+                            ? Image(image: thumbProvider(b.thumbnailPath!), frameBuilder: thumbFrameBuilder(),
                                 fit: BoxFit.cover,
                                 gaplessPlayback: true,
                                 color: i < thumbBooks.length - 1
@@ -689,7 +697,7 @@ class _BookItemState extends ConsumerState<_BookItem> {
                     }
                   },
                   child: widget.book.thumbnailPath != null
-                      ? Image(image: thumbProvider(widget.book.thumbnailPath!),
+                      ? Image(image: thumbProvider(widget.book.thumbnailPath!), frameBuilder: thumbFrameBuilder(),
                           fit: BoxFit.contain,
                           width: double.infinity,
                           height: double.infinity,

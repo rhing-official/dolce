@@ -44,6 +44,7 @@ class AppSettingsAdapter extends TypeAdapter<AppSettings> {
           ? [
               'back',
               'forward',
+              'refresh',
               'search',
               'tabCount',
               'settings',
@@ -54,7 +55,7 @@ class AppSettingsAdapter extends TypeAdapter<AppSettings> {
             ]
           : (fields[13] as List).cast<String>(),
       mobileNavHiddenIcons: fields[14] == null
-          ? ['addTab', 'favorites', 'information']
+          ? ['addFolder', 'addTab', 'favorites', 'information']
           : (fields[14] as List).cast<String>(),
       screenOrientationLock: fields[15] == null
           ? ScreenOrientationLock.portraitUp
@@ -68,13 +69,17 @@ class AppSettingsAdapter extends TypeAdapter<AppSettings> {
       accentTextColor: fields[20] == null
           ? AccentTextColor.auto
           : fields[20] as AccentTextColor,
+      customAccentColors:
+          fields[21] == null ? [] : (fields[21] as List).cast<int>(),
+      hiddenAccentPresets:
+          fields[22] == null ? [] : (fields[22] as List).cast<int>(),
     );
   }
 
   @override
   void write(BinaryWriter writer, AppSettings obj) {
     writer
-      ..writeByte(18)
+      ..writeByte(20)
       ..writeByte(0)
       ..write(obj.pageDirection)
       ..writeByte(2)
@@ -110,7 +115,11 @@ class AppSettingsAdapter extends TypeAdapter<AppSettings> {
       ..writeByte(19)
       ..write(obj.accentColor)
       ..writeByte(20)
-      ..write(obj.accentTextColor);
+      ..write(obj.accentTextColor)
+      ..writeByte(21)
+      ..write(obj.customAccentColors)
+      ..writeByte(22)
+      ..write(obj.hiddenAccentPresets);
   }
 
   @override

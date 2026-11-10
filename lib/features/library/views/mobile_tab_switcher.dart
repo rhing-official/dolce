@@ -150,7 +150,7 @@ class _TabCard extends StatelessWidget {
                   width: double.infinity,
                   color: colorScheme.surfaceContainerHighest,
                   child: thumbnailPath != null
-                      ? Image(image: thumbProvider(thumbnailPath),
+                      ? Image(image: thumbProvider(thumbnailPath), frameBuilder: thumbFrameBuilder(),
                           fit: BoxFit.cover,
                           width: double.infinity,
                           height: double.infinity,

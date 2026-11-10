@@ -201,6 +201,27 @@ class AppLocalizationsJa extends AppLocalizations {
   String get accentColorSection => 'アクセントカラー';
 
   @override
+  String get accentColorCode => 'カラーコード';
+
+  @override
+  String get accentColorFormatError => '#RRGGBB の形式で入力してください';
+
+  @override
+  String get accentColorAddPreset => 'プリセットに登録';
+
+  @override
+  String get accentColorAddedBanner => 'プリセットに登録しました';
+
+  @override
+  String get accentColorCopiedBanner => 'コピーしました';
+
+  @override
+  String get accentPresetDeleteMessage => 'この色を削除しますか？';
+
+  @override
+  String get accentPresetDeleteConfirm => '削除する';
+
+  @override
   String get accentTextColorSection => 'アクセント色の上の文字色';
 
   @override
@@ -234,6 +255,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get orientationPortraitDown => '180度';
+
+  @override
+  String get refresh => '更新';
 
   @override
   String get navBack => '戻る';

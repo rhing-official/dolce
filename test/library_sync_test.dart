@@ -79,4 +79,25 @@ void main() {
     expect(one.length, 1);
     expect(one.single.lastPage, 7);
   });
+
+  test('syncAllの間だけisSyncingがtrueになる（並行呼び出しでも1回）', () async {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    final notifier = container.read(libraryProvider.notifier);
+    final states = <bool>[];
+    container.listen(libraryProvider, (prev, next) {
+      if (prev == null || prev.isSyncing != next.isSyncing) {
+        states.add(next.isSyncing);
+      }
+    });
+    // 初期化時の同期が走っている最中に、さらに2回呼んでも1つの同期を共有する
+    await Future.wait([notifier.syncAll(), notifier.syncAll()]);
+    await notifier.syncAll();
+    expect(container.read(libraryProvider).isSyncing, isFalse);
+    // true→falseの組が、同期の回数ぶんだけ並ぶ（途中で重複して切り替わらない）
+    for (var i = 0; i + 1 < states.length; i += 2) {
+      expect(states[i], isTrue);
+      expect(states[i + 1], isFalse);
+    }
+  });
 }
