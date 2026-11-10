@@ -18,7 +18,8 @@ cp -a "$BUNDLE/." "$APPDIR/usr/bin/"
 cp "$APP_ID.desktop" "$APPDIR/$APP_ID.desktop"
 cp dolce-icon-256.png "$APPDIR/$APP_ID.png"
 # AppStreamのメタ情報（無いとappimagetoolが警告する）
-mkdir -p "$APPDIR/usr/share/metainfo"
+mkdir -p "$APPDIR/usr/share/metainfo" "$APPDIR/usr/share/applications"
+cp "$APP_ID.desktop" "$APPDIR/usr/share/applications/$APP_ID.desktop"
 cp "$APP_ID.metainfo.xml" "$APPDIR/usr/share/metainfo/$APP_ID.appdata.xml"
 ln -s "usr/bin/dolce" "$APPDIR/AppRun"
 
