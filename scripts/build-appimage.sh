@@ -23,6 +23,8 @@ cp "$APP_ID.desktop" "$APPDIR/usr/share/applications/$APP_ID.desktop"
 cp "$APP_ID.metainfo.xml" "$APPDIR/usr/share/metainfo/$APP_ID.appdata.xml"
 ln -s "usr/bin/dolce" "$APPDIR/AppRun"
 
+# メタ情報の検証はURL到達性などネットワーク依存で不安定なため、ここでは行わない
+# （metainfoは同梱する。形式の検証は `appstreamcli validate --no-net` で行える）
 rm -f "$OUT"
-ARCH=x86_64 APPIMAGE_EXTRACT_AND_RUN=1 appimagetool "$APPDIR" "$OUT"
+ARCH=x86_64 APPIMAGE_EXTRACT_AND_RUN=1 appimagetool --no-appstream "$APPDIR" "$OUT"
 echo "作成: $OUT"
