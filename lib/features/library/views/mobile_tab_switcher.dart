@@ -1,3 +1,4 @@
+import '../../../core/theme/block_thumb_card.dart';
 import '../../../core/utils/thumb_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -114,15 +115,11 @@ class _TabCard extends StatelessWidget {
     final thumbnailPath = book?.thumbnailPath;
 
     return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(
-          color: active ? colorScheme.primary : Colors.transparent,
-          width: 3,
-        ),
-      ),
+      margin: kBlockThumbMargin,
+      decoration: blockThumbDecoration(context, highlighted: active),
       child: Card(
         margin: EdgeInsets.zero,
+        shape: blockThumbInnerShape,
         clipBehavior: Clip.antiAlias,
         child: Column(
           children: [

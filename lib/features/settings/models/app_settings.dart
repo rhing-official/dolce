@@ -127,6 +127,33 @@ enum AppLanguage {
   en,
 }
 
+// ★追加：アクセントカラーのプリセット（ARGB。版画UIの面・ボタンの色の元になる）。
+// 先頭が標準色（橙）
+const List<int> kAccentPresets = [
+  0xFFF08300, // 橙（標準）
+  0xFF3D2EE0, // 青紫（以前の既定色）
+  0xFF88B04B, // 黄緑
+  0xFFC1272D, // 赤
+  0xFFF08567, // サーモンピンク
+  0xFF114514, // 濃い緑
+  0xFFA997C6, // 薄い紫
+  0xFF114789, // 紺
+  0xFF1AAAAA, // 青緑
+  0xFFC199F7, // ラベンダー
+];
+
+// ★追加：アクセント色の上に載せる文字・アイコンの色（auto=アクセントとの
+// コントラストで黒/白を自動選択）
+@HiveType(typeId: 16)
+enum AccentTextColor {
+  @HiveField(0)
+  auto,
+  @HiveField(1)
+  black,
+  @HiveField(2)
+  white,
+}
+
 // モバイル用ナビゲーションポップアップに並べる9アイコンのデフォルト順序
 const List<String> kDefaultMobileNavIconOrder = [
   'back',
@@ -206,6 +233,14 @@ class AppSettings {
   @HiveField(18, defaultValue: 5)
   final int autoPageSeconds;
 
+  // ★追加：アクセントカラー（ARGB）。kAccentPresetsから選ぶ
+  @HiveField(19, defaultValue: 0xFFF08300)
+  final int accentColor;
+
+  // ★追加：アクセント色の上の文字色
+  @HiveField(20, defaultValue: AccentTextColor.auto)
+  final AccentTextColor accentTextColor;
+
   // mobileNavIconOrderは新規インストール時のみkDefaultMobileNavIconOrderが
   // 初期値として使われるため、既にHiveへ保存済みの環境でアイコンを追加すると
   // 既存ユーザーの保存済みリストには含まれず、設定画面から永久に表示できなく
@@ -247,6 +282,8 @@ class AppSettings {
     this.settingsFavoritesOpenMode = SettingsFavoritesOpenMode.newTab,
     this.language = AppLanguage.ja,
     this.autoPageSeconds = 5,
+    this.accentColor = 0xFFF08300,
+    this.accentTextColor = AccentTextColor.auto,
   });
 
   AppSettings copyWith({
@@ -267,6 +304,8 @@ class AppSettings {
     SettingsFavoritesOpenMode? settingsFavoritesOpenMode,
     AppLanguage? language,
     int? autoPageSeconds,
+    int? accentColor,
+    AccentTextColor? accentTextColor,
   }) {
     return AppSettings(
       pageDirection: pageDirection ?? this.pageDirection,
@@ -290,6 +329,8 @@ class AppSettings {
           settingsFavoritesOpenMode ?? this.settingsFavoritesOpenMode,
       language: language ?? this.language,
       autoPageSeconds: autoPageSeconds ?? this.autoPageSeconds,
+      accentColor: accentColor ?? this.accentColor,
+      accentTextColor: accentTextColor ?? this.accentTextColor,
     );
   }
 }

@@ -1,3 +1,4 @@
+import '../../../core/theme/block_thumb_card.dart';
 import '../../../core/utils/thumb_image.dart';
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
@@ -284,17 +285,15 @@ class _ShelfCardState extends ConsumerState<_ShelfCard> {
       child: Column(children: [
         Expanded(
             child: Container(
-          decoration: BoxDecoration(
-              border: Border.all(
-                  color: widget.highlighted
-                      ? colorScheme.primary
-                      : Colors.transparent,
-                  width: 3)),
+          margin: kBlockThumbMargin,
+          decoration: blockThumbDecoration(context,
+              highlighted: widget.highlighted),
           child: Card(
-          shape: const RoundedRectangleBorder(),
+          margin: EdgeInsets.zero,
+          shape: blockThumbInnerShape,
           clipBehavior: Clip.antiAlias,
           color: colorScheme.surfaceContainerHighest,
-          elevation: _hover ? 1 : 0,
+          elevation: 0,
           child: Listener(
             onPointerDown: (e) {
               if (e.buttons == 4) {

@@ -64,13 +64,17 @@ class AppSettingsAdapter extends TypeAdapter<AppSettings> {
           : fields[16] as SettingsFavoritesOpenMode,
       language: fields[17] == null ? AppLanguage.ja : fields[17] as AppLanguage,
       autoPageSeconds: fields[18] == null ? 5 : fields[18] as int,
+      accentColor: fields[19] == null ? 4293952256 : fields[19] as int,
+      accentTextColor: fields[20] == null
+          ? AccentTextColor.auto
+          : fields[20] as AccentTextColor,
     );
   }
 
   @override
   void write(BinaryWriter writer, AppSettings obj) {
     writer
-      ..writeByte(16)
+      ..writeByte(18)
       ..writeByte(0)
       ..write(obj.pageDirection)
       ..writeByte(2)
@@ -102,7 +106,11 @@ class AppSettingsAdapter extends TypeAdapter<AppSettings> {
       ..writeByte(17)
       ..write(obj.language)
       ..writeByte(18)
-      ..write(obj.autoPageSeconds);
+      ..write(obj.autoPageSeconds)
+      ..writeByte(19)
+      ..write(obj.accentColor)
+      ..writeByte(20)
+      ..write(obj.accentTextColor);
   }
 
   @override
@@ -602,6 +610,50 @@ class AppLanguageAdapter extends TypeAdapter<AppLanguage> {
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is AppLanguageAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
+class AccentTextColorAdapter extends TypeAdapter<AccentTextColor> {
+  @override
+  final int typeId = 16;
+
+  @override
+  AccentTextColor read(BinaryReader reader) {
+    switch (reader.readByte()) {
+      case 0:
+        return AccentTextColor.auto;
+      case 1:
+        return AccentTextColor.black;
+      case 2:
+        return AccentTextColor.white;
+      default:
+        return AccentTextColor.auto;
+    }
+  }
+
+  @override
+  void write(BinaryWriter writer, AccentTextColor obj) {
+    switch (obj) {
+      case AccentTextColor.auto:
+        writer.writeByte(0);
+        break;
+      case AccentTextColor.black:
+        writer.writeByte(1);
+        break;
+      case AccentTextColor.white:
+        writer.writeByte(2);
+        break;
+    }
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AccentTextColorAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

@@ -54,6 +54,8 @@ void main() async {
       Hive.registerAdapter(SettingsFavoritesOpenModeAdapter());
     if (!Hive.isAdapterRegistered(15))
       Hive.registerAdapter(AppLanguageAdapter());
+    if (!Hive.isAdapterRegistered(16))
+      Hive.registerAdapter(AccentTextColorAdapter());
 
     // ★ ここで全てのBoxが開くのを確実に待つ（これがエラーの解決策）
     await Future.wait([

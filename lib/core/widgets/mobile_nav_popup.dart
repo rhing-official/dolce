@@ -6,6 +6,7 @@ import '../../features/library/views/mobile_search_screen.dart';
 import '../../features/library/views/mobile_tab_switcher.dart';
 import '../../features/settings/providers/settings_provider.dart';
 import '../../l10n/app_localizations.dart';
+import '../theme/block_theme.dart';
 import 'glass_panel.dart';
 import 'swipe_tab_switch_area.dart';
 
@@ -53,16 +54,14 @@ class MobileNavPopup extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       top: false,
-      minimum: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      // 版画の影が右・下へはみ出す分の余白（パネル自体はクリップしない）
+      minimum: const EdgeInsets.fromLTRB(12, 0, 16, 14),
       child: RepaintBoundary(
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(28),
-          child: GlassPanel(
-            borderRadius: BorderRadius.circular(28),
-            child: const SizedBox(
-              height: kMobileNavPopupHeight,
-              child: MobileNavIconRow(),
-            ),
+        child: GlassPanel(
+          borderRadius: BorderRadius.circular(BlockTheme.radius),
+          child: const SizedBox(
+            height: kMobileNavPopupHeight,
+            child: MobileNavIconRow(),
           ),
         ),
       ),
@@ -295,8 +294,15 @@ class _HamburgerButtonState extends State<_HamburgerButton> {
           top: top,
           width: _menuWidth,
           child: Material(
-            elevation: 8,
-            borderRadius: BorderRadius.circular(12),
+            elevation: 0,
+            color: colorScheme.surfaceContainer,
+            shape: BlockShapeBorder(
+              borderRadius: BorderRadius.circular(BlockTheme.radius),
+              lineColor: BlockTheme.lineColor(Theme.of(context).brightness),
+              shadowColor: Theme.of(context).brightness == Brightness.dark
+                  ? colorScheme.primary
+                  : BlockTheme.lineColor(Theme.of(context).brightness),
+            ),
             clipBehavior: Clip.antiAlias,
             child: ValueListenableBuilder<int?>(
               valueListenable: _hoverIndex,

@@ -12,6 +12,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get settings => '設定';
 
   @override
+  String get close => '閉じる';
+
+  @override
   String get cancel => 'キャンセル';
 
   @override
@@ -109,13 +112,13 @@ class AppLocalizationsJa extends AppLocalizations {
   String get shortcutCtrlI => '設定を開く';
 
   @override
-  String get shortcutCtrlF => 'お気に入りを開く';
+  String get shortcutCtrlF => 'サイドバーの検索欄にフォーカス';
+
+  @override
+  String get shortcutCtrlB => 'お気に入りを開く';
 
   @override
   String get shortcutF1 => '情報を開く';
-
-  @override
-  String get shortcutCtrlS => 'サイドバーの検索欄にフォーカス';
 
   @override
   String get shortcutCtrlA => '表示中のディレクトリ / ファイルを全選択';
@@ -142,7 +145,13 @@ class AppLocalizationsJa extends AppLocalizations {
   String get shortcutSpace => 'メニューバーの表示 / 非表示切り替え';
 
   @override
-  String get sidebarSearchHint => '書籍・ディレクトリを検索...';
+  String get shortcutT => '目次を開く（目次のある本のみ）';
+
+  @override
+  String get shortcutP => '自動ページめくりの開始 / 停止';
+
+  @override
+  String get sidebarSearchHint => '検索';
 
   @override
   String get noSearchResults => '該当する書籍・ディレクトリが見つかりません';
@@ -187,6 +196,21 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get tableOfContents => '目次';
+
+  @override
+  String get accentColorSection => 'アクセントカラー';
+
+  @override
+  String get accentTextColorSection => 'アクセント色の上の文字色';
+
+  @override
+  String get accentTextAuto => '自動（アクセントに合わせて黒/白）';
+
+  @override
+  String get accentTextBlack => '黒';
+
+  @override
+  String get accentTextWhite => '白';
 
   @override
   String get autoPageStart => '自動めくりを開始';

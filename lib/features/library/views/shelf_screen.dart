@@ -1,3 +1,5 @@
+import '../../../core/theme/block_thumb_card.dart';
+import '../../../core/widgets/app_banner.dart';
 import '../../../core/utils/thumb_image.dart';
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
@@ -284,8 +286,7 @@ Future<bool> _showBatchMenuIfApplicable({
       }
       ref.read(selectionProvider.notifier).clear();
       if (!allSucceeded && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(AppLocalizations.of(context)!.deleteFailed)));
+        showAppBanner(context, AppLocalizations.of(context)!.deleteFailed);
       }
       break;
   }
@@ -353,8 +354,7 @@ class _FolderItemState extends ConsumerState<_FolderItem> {
           .read(libraryProvider.notifier)
           .removeFolder(widget.shelfId, widget.path);
       if (!success && mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(loc.deleteFailed)));
+        showAppBanner(context, loc.deleteFailed);
       }
     }
   }
@@ -437,17 +437,15 @@ class _FolderItemState extends ConsumerState<_FolderItem> {
             child: Container(
           // Card自体の枠線はサムネイル画像がカードいっぱいに描かれて隠れて
           // しまうため、Cardの外側(デフォルトmarginの隙間)に枠を描く
-          decoration: BoxDecoration(
-              border: Border.all(
-                  color: widget.highlighted
-                      ? colorScheme.primary
-                      : Colors.transparent,
-                  width: 3)),
+          margin: kBlockThumbMargin,
+          decoration: blockThumbDecoration(context,
+              highlighted: widget.highlighted),
           child: Card(
-          shape: const RoundedRectangleBorder(),
+          margin: EdgeInsets.zero,
+          shape: blockThumbInnerShape,
           clipBehavior: Clip.antiAlias,
           color: colorScheme.surfaceContainerHighest,
-          elevation: _hover ? 1 : 0,
+          elevation: 0,
           child: Listener(
             onPointerDown: (e) {
               if (e.buttons == 4) {
@@ -628,8 +626,7 @@ class _BookItemState extends ConsumerState<_BookItem> {
         final success =
             await ref.read(libraryProvider.notifier).removeBook(widget.book.id);
         if (!success && mounted) {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text(loc.deleteFailed)));
+          showAppBanner(context, loc.deleteFailed);
         }
         break;
       case 'newtab':
@@ -647,22 +644,20 @@ class _BookItemState extends ConsumerState<_BookItem> {
     final isChecked =
         ref.watch(selectionProvider).selectedIds.contains(widget.book.id);
     final segments = [...tab.segments, widget.book.title];
-    final colorScheme = Theme.of(context).colorScheme;
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
       child: Column(children: [
         Expanded(
             child: Container(
-          decoration: BoxDecoration(
-              border: Border.all(
-                  color: widget.highlighted
-                      ? colorScheme.primary
-                      : Colors.transparent,
-                  width: 3)),
+          margin: kBlockThumbMargin,
+          decoration: blockThumbDecoration(context,
+              highlighted: widget.highlighted),
           child: Card(
+          margin: EdgeInsets.zero,
+          shape: blockThumbInnerShape,
           clipBehavior: Clip.antiAlias,
-          elevation: _hover ? 1 : 0,
+          elevation: 0,
           child: Stack(children: [
             Listener(
               onPointerDown: (e) {

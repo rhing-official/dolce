@@ -50,12 +50,14 @@ lib/
       tab_provider.dart             # タブ管理・ナビゲーション履歴（undo/redo）★企画書にない追加機能
       selection_provider.dart       # 複数選択（全選択/範囲選択）★同上
       sidebar_focus_provider.dart   # Ctrl+Fでサイドバー検索欄へフォーカスを要求するシグナル★同上
+    widgets/glass_panel.dart        # 名前は旧称。中身は版画の面（PanelBackground/GlassPanel）
     services/
       file_service.dart
       cbz_service.dart
       pdf_cache_service.dart        # ★技術仕様書にない追加サービス
       thumbnail_service.dart        # ★同上
-    theme/app_theme.dart            # 未使用（app.dart が独自にThemeDataを定義）
+    theme/block_theme.dart          # 版画UI（太枠+硬い影）のテーマと共通部品。アクセント色は設定(AppSettings.accentColor)から
+    theme/block_thumb_card.dart     # サムネ付きカード(フォルダ/本/タブ)の版画枠
     utils/sort_utils.dart           # ★同上
   features/
     library/
@@ -90,6 +92,7 @@ lib/
 - **ルーティング**: 技術仕様書は GoRouter によるルート定義（`/`, `/shelf/:id`, `/viewer/:id`, `/settings`）を想定しているが、実装は `app.dart` の `TabShell` が `IndexedStack` + `tab_provider.dart` の独自タブ状態で画面を切り替えている。ブラウザ的な戻る/進む履歴（`TabItem.history` / `historyIndex`）もここで管理。`go_router` は依存関係に残るが未使用。
 - **マルチタブ・複数選択**: 企画書のフェーズ計画（Phase 1〜4）には出てこないが、`tab_provider.dart` / `selection_provider.dart` として先行実装済み。詳細な操作は [docs/実装済みショートカット.md](docs/実装済みショートカット.md) が正。
 - **タブモード廃止**: かつて存在した `AppSettings.tabMode`（`fixedLibrary`/`independent`の切り替え）は廃止し、常に「本はそのタブ内で開く」動作に統一した。`TabMode` enum自体は既存Hiveデータの後方互換デコード用にコード上残っているが、新規に参照してはならない。
+- **UIスタイル**: 見た目は版画UI（太い枠+ぼかし無しの硬い影、アクセントの淡い面）に統一。旧すりガラス/モノクロは廃止。影は右下へはみ出すため、パネルを`ClipRRect`で丸ごとクリップしない（中身だけクリップ）。アクセント色は設定から10色のプリセットを選ぶ。
 - **ウィンドウ管理**: `window_manager` でカスタムタイトルバー（`TitleBarStyle.hidden` + 独自の最小化/最大化/閉じるボタン）と、ビューアのUIオーバーレイ非表示時の自動フルスクリーン化を実装。技術仕様書には記載なし。
 - **プロジェクト名**: 開発指示書内は旧称 `kuwa` のままだが、pubspec.yaml の `name` は `dolce`（旧アプリ名 `komichi` から改名。Microsoft Storeには`komichi`名義で提出済みのため、MSIXの`identity_name`/`publisher`は`Rhing.komichi`のまま変更していない）。
 
@@ -141,6 +144,9 @@ flutter build linux     # / build windows / build apk         # ビルド
 | `Ctrl+W` | 現在のタブを閉じる |
 | `Ctrl+I` | 設定タブを開く |
 | `Ctrl+F` | サイドバーの検索欄にフォーカス |
+| `Ctrl+B` | お気に入りを開く/閉じる |
+| `F1` | 情報タブを開く/閉じる |
+| `F5` | 全本棚を再スキャンして一覧を更新 |
 | `Ctrl+A` | 表示中フォルダ/ファイルを全選択 |
 | `Ctrl+クリック` / `Shift+クリック` | 個別選択の追加/解除・範囲選択 |
 | マウス中ボタンクリック | タブを閉じる/本を新タブで開く |

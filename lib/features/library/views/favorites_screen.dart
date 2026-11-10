@@ -1,3 +1,4 @@
+import '../../../core/theme/block_thumb_card.dart';
 import '../../../core/utils/thumb_image.dart';
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
@@ -358,17 +359,15 @@ class _FavoriteFolderCardState extends ConsumerState<_FavoriteFolderCard> {
       child: Column(children: [
         Expanded(
             child: Container(
-          decoration: BoxDecoration(
-              border: Border.all(
-                  color: widget.highlighted
-                      ? colorScheme.primary
-                      : Colors.transparent,
-                  width: 3)),
+          margin: kBlockThumbMargin,
+          decoration: blockThumbDecoration(context,
+              highlighted: widget.highlighted),
           child: Card(
-          shape: const RoundedRectangleBorder(),
+          margin: EdgeInsets.zero,
+          shape: blockThumbInnerShape,
           clipBehavior: Clip.antiAlias,
           color: colorScheme.surfaceContainerHighest,
-          elevation: _hover ? 1 : 0,
+          elevation: 0,
           child: Listener(
             onPointerDown: (e) {
               if (e.buttons == 4) {
@@ -545,22 +544,20 @@ class _FavoriteBookCardState extends ConsumerState<_FavoriteBookCard> {
   Widget build(BuildContext context) {
     final isChecked =
         ref.watch(selectionProvider).selectedIds.contains(widget.book.id);
-    final colorScheme = Theme.of(context).colorScheme;
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
       child: Column(children: [
         Expanded(
             child: Container(
-          decoration: BoxDecoration(
-              border: Border.all(
-                  color: widget.highlighted
-                      ? colorScheme.primary
-                      : Colors.transparent,
-                  width: 3)),
+          margin: kBlockThumbMargin,
+          decoration: blockThumbDecoration(context,
+              highlighted: widget.highlighted),
           child: Card(
+          margin: EdgeInsets.zero,
+          shape: blockThumbInnerShape,
           clipBehavior: Clip.antiAlias,
-          elevation: _hover ? 1 : 0,
+          elevation: 0,
           child: Stack(children: [
             Listener(
               onPointerDown: (e) {

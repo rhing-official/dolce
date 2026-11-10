@@ -12,28 +12,31 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settings => 'Settings';
 
   @override
+  String get close => 'Close';
+
+  @override
   String get cancel => 'Cancel';
 
   @override
   String get delete => 'Delete';
 
   @override
-  String get addFolder => 'Add Folder';
+  String get addFolder => 'Add Directory';
 
   @override
   String get openInNewTab => 'Open in New Tab';
 
   @override
-  String get addToFavorites => 'Add to Favorites';
+  String get addToFavorites => 'Add to Favourites';
 
   @override
-  String get removeFromFavorites => 'Remove from Favorites';
+  String get removeFromFavorites => 'Remove from Favourites';
 
   @override
-  String get favorites => 'Favorites';
+  String get favorites => 'Favourites';
 
   @override
-  String get noFavoritesYet => 'No favorites yet';
+  String get noFavoritesYet => 'No favourites yet';
 
   @override
   String fileCount(int count) {
@@ -50,7 +53,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noShelvesYet => 'No bookshelves added yet';
 
   @override
-  String get addingShelf => 'Adding bookshelf…';
+  String get addingShelf => 'Adding a bookshelf…';
 
   @override
   String get topPageTitle => 'Top';
@@ -70,10 +73,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get licensesSection => 'Open Source Licenses';
+  String get licensesSection => 'Open Source Licences';
 
   @override
-  String get licensesButton => 'View Licenses';
+  String get licensesButton => 'View Licences';
 
   @override
   String get shortcutsSection => 'Keyboard Shortcuts';
@@ -94,7 +97,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shortcutAltArrow => 'Go back / forward in history';
 
   @override
-  String get shortcutEsc => 'Close the viewer and return to the folder';
+  String get shortcutEsc => 'Close the viewer and return to the directory';
 
   @override
   String get shortcutCtrlTab => 'Switch to the tab on the right / below';
@@ -110,22 +113,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get shortcutMiddleClick =>
-      'Close a tab / open a book or folder in a new tab';
+      'Close a tab / open a book or directory in a new tab';
 
   @override
   String get shortcutCtrlI => 'Open settings';
 
   @override
-  String get shortcutCtrlF => 'Open favorites';
+  String get shortcutCtrlF => 'Focus the sidebar search box';
+
+  @override
+  String get shortcutCtrlB => 'Open favourites';
 
   @override
   String get shortcutF1 => 'Open information';
 
   @override
-  String get shortcutCtrlS => 'Focus the sidebar search field';
-
-  @override
-  String get shortcutCtrlA => 'Select all items in the current folder';
+  String get shortcutCtrlA => 'Select all directories / files in view';
 
   @override
   String get shortcutCtrlClick =>
@@ -136,7 +139,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Range-select (selects everything from the last click to this one)';
 
   @override
-  String get shortcutF5 => 'Rescan folders and refresh the book list';
+  String get shortcutF5 => 'Rescan directories and refresh the book list';
 
   @override
   String get shortcutArrowLeftRight => 'Previous / next page';
@@ -146,22 +149,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get shortcutArrowUpDown =>
-      'Open the previous / next book in the same folder';
+      'Open the previous / next book in the same directory';
 
   @override
   String get shortcutSpace => 'Show or hide the menu bar';
 
   @override
-  String get sidebarSearchHint => 'Search books & folders...';
+  String get shortcutT => 'Open the table of contents (books that have one)';
 
   @override
-  String get noSearchResults => 'No matching books or folders found';
+  String get shortcutP => 'Start / stop auto page turn';
 
   @override
-  String get deleteFolderTitle => 'Delete Folder';
+  String get sidebarSearchHint => 'Search';
 
   @override
-  String get deleteFolderConfirm => 'Delete all books in this folder?';
+  String get noSearchResults => 'No matching books or directories found';
+
+  @override
+  String get deleteFolderTitle => 'Delete Directory';
+
+  @override
+  String get deleteFolderConfirm => 'Delete all books in this directory?';
 
   @override
   String get deleteFailed => 'Failed to delete the file';
@@ -174,7 +183,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String excludeShelfConfirm(String name) {
-    return 'Exclude \"$name\" from dolce?\nThe actual files will not be deleted. To read it again, you\'ll need to add the folder as a bookshelf once more.';
+    return 'Exclude \"$name\" from dolce?\nThe actual files will not be deleted. To load it again, start over by adding the bookshelf.';
   }
 
   @override
@@ -197,6 +206,21 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tableOfContents => 'Table of contents';
+
+  @override
+  String get accentColorSection => 'Accent colour';
+
+  @override
+  String get accentTextColorSection => 'Text colour on accent';
+
+  @override
+  String get accentTextAuto => 'Auto (black / white to suit the accent)';
+
+  @override
+  String get accentTextBlack => 'Black';
+
+  @override
+  String get accentTextWhite => 'White';
 
   @override
   String get autoPageStart => 'Start auto page turn';
@@ -234,7 +258,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navAddTab => 'Add Tab';
 
   @override
-  String get navTabList => 'Tabs';
+  String get navTabList => 'Tab List';
 
   @override
   String get navMore => 'More';
@@ -243,14 +267,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pageDirectionSection => 'Page Direction';
 
   @override
-  String get pageDirectionLeftTitle => 'Left-to-Right';
+  String get pageDirectionLeftTitle => 'Next Page on the Left';
 
   @override
   String get pageDirectionLeftSubtitle =>
       'Left click / Left arrow key moves to the next page';
 
   @override
-  String get pageDirectionRightTitle => 'Right-to-Left';
+  String get pageDirectionRightTitle => 'Next Page on the Right';
 
   @override
   String get pageDirectionRightSubtitle =>
@@ -289,7 +313,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get outerEdgeSidebarSubtitle =>
-      'Maximizing the sidebar moves the vertical tabs inward to make room';
+      'Maximising the sidebar moves the vertical tabs inward to make room';
 
   @override
   String get fullscreenBehaviorSection => 'Fullscreen Timing';
@@ -308,10 +332,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get launchTabSection => 'Startup Tab';
 
   @override
-  String get launchTabResumeLastBook => 'Reopen the Last Book You Were Reading';
+  String get launchTabResumeLastBook => 'Reopen the Tab You Were Last Reading';
 
   @override
-  String get launchTabAlwaysLibrary => 'Always Start from the Bookshelf Tab';
+  String get launchTabAlwaysLibrary => 'Always Start from the Top Page';
 
   @override
   String get launchTabAlwaysLibrarySubtitle =>
@@ -319,7 +343,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsFavoritesOpenModeSection =>
-      'Settings/Favorites Icon Behavior';
+      'Settings / Favourites Icon Behaviour';
 
   @override
   String get openModeNewTabSubtitle =>

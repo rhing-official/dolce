@@ -1,10 +1,12 @@
 import 'dart:io';
-import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../core/theme/block_theme.dart';
+import '../../../core/theme/chrome_motion.dart';
+import '../../../core/widgets/glass_panel.dart';
 import '../models/toc_entry.dart';
 import '../models/read_state.dart';
 import '../providers/viewer_provider.dart';
@@ -48,14 +50,14 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen>
   // ガラス効果(BackdropFilter)はスライド中の毎フレーム再計算が非常に重いため、
   // スライド中はブラー無しの不透明背景に切り替え、静止した時だけガラスにする
   // （サイドバーで実際に発生したジャンクと同じ原因を先回りして回避する）。
-  // 200msだと速すぎて動きが目に留まらなかったため、体感できる速さまで伸ばし、
-  // イージングも付けて動き自体をはっきりさせる
+  // 速さ・イージングは他のクローム（サイドバー・パスバー）と共通の
+  // [kChromeSlideDuration]等に揃える
   late final AnimationController _menuAnim = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 1000));
+      vsync: this, duration: kChromeSlideDuration);
   late final Animation<double> _menuCurve = CurvedAnimation(
       parent: _menuAnim,
-      curve: Curves.easeOutCubic,
-      reverseCurve: Curves.easeInCubic);
+      curve: kChromeSlideCurve,
+      reverseCurve: kChromeSlideReverseCurve);
   bool? _wasShowUI;
 
   // 自動めくり秒数の選択パネル（長押しのままドラッグして選択 + 自由入力）
@@ -406,6 +408,7 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen>
     final bool isLeftToNext =
         settings.pageDirection == PageDirection.leftToNext;
     final loc = AppLocalizations.of(context)!;
+    final fg = Theme.of(context).colorScheme.onSurface;
     final content = Column(children: [
       SizedBox(
         height: 30,
@@ -416,7 +419,7 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen>
             bottom: 0,
             child: Center(
               child: Text('${state.totalPages}',
-                  style: const TextStyle(color: Colors.white70, fontSize: 18)),
+                  style: TextStyle(color: fg.withValues(alpha: 0.7), fontSize: 18)),
             ),
           ),
           Positioned(
@@ -425,7 +428,7 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen>
             bottom: 0,
             child: Center(
               child: Text('${state.currentPage + 1}',
-                  style: const TextStyle(color: Colors.white70, fontSize: 18)),
+                  style: TextStyle(color: fg.withValues(alpha: 0.7), fontSize: 18)),
             ),
           ),
         ]),
@@ -439,18 +442,18 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen>
       Row(mainAxisAlignment: MainAxisAlignment.center, children: [
         IconButton(
             tooltip: isLeftToNext ? loc.jumpToLastPage : loc.jumpToFirstPage,
-            icon: const Icon(Icons.skip_previous, color: Colors.white),
+            icon: Icon(Icons.skip_previous, color: fg),
             onPressed: () =>
                 notifier.jumpToPage(isLeftToNext ? state.totalPages - 1 : 0)),
         IconButton(
             tooltip: isLeftToNext ? loc.jumpToFirstPage : loc.jumpToLastPage,
-            icon: const Icon(Icons.skip_next, color: Colors.white),
+            icon: Icon(Icons.skip_next, color: fg),
             onPressed: () =>
                 notifier.jumpToPage(isLeftToNext ? 0 : state.totalPages - 1)),
         if (state.toc.isNotEmpty)
           IconButton(
               tooltip: loc.tableOfContents,
-              icon: const Icon(Icons.list, color: Colors.white),
+              icon: Icon(Icons.list, color: fg),
               onPressed: () => _showToc(state, notifier)),
         // EPUBは章単位のため自動ページめくりは対象外
         if (notifier.epub == null) ...[
@@ -471,7 +474,7 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen>
               triggerMode: TooltipTriggerMode.manual,
               child: IconButton(
                   icon: Icon(state.autoPlay ? Icons.pause : Icons.play_arrow,
-                      color: Colors.white),
+                      color: fg),
                   onPressed: notifier.toggleAutoPlay),
             ),
           ),
@@ -499,7 +502,7 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen>
             // ジェスチャーが競合し、長押しメニューが開かなくなる
             child: IconButton(
                 icon:
-                    const Icon(Icons.screen_lock_rotation, color: Colors.white),
+                    Icon(Icons.screen_lock_rotation, color: fg),
                 onPressed: _toggleOrientation),
           ),
         ],
@@ -509,40 +512,26 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen>
       // なくこのページ送りパネルの下段として同じガラス背景の中に統合する
       // （2枚のガラスパネルが重なって視認性が悪くなるのを避けるため）
       if (isMobilePlatform) ...[
-        const Divider(height: 8, color: Colors.white12),
-        const SizedBox(
+        Divider(height: 8, color: fg.withValues(alpha: 0.2)),
+        SizedBox(
             height: kMobileNavPopupHeight,
-            child: MobileNavIconRow(iconColor: Colors.white)),
+            child: MobileNavIconRow(iconColor: fg)),
       ],
     ]);
 
     final panelHeight = kViewerBottomMenuHeight +
         (isMobilePlatform ? _kMobileNavRowExtraHeight : 0.0);
 
+    // 版画のパネル。影は右・下へはみ出すため、パネル全体はクリップせず中身だけ
+    // 角丸でクリップする。左右・下は画面端に接するので、影の分だけ上へ余白を取る
+    const radius = BorderRadius.vertical(top: Radius.circular(BlockTheme.radius));
     return RepaintBoundary(
-      child: ClipRRect(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
-        child: SizedBox(
-          height: panelHeight,
-          child: Stack(fit: StackFit.expand, children: [
-            BackdropFilter(
-              filter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.55),
-                  // Border(top: ...)は角丸を無視して直線を引いてしまい、
-                  // 上端の角が四角く見えてしまうため、borderRadiusを持つ
-                  // Border.allで角丸に沿った縁取りにする
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(18)),
-                  border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.16), width: 1),
-                ),
-              ),
-            ),
-            content,
-          ]),
-        ),
+      child: SizedBox(
+        height: panelHeight,
+        child: Stack(fit: StackFit.expand, children: [
+          const PanelBackground(borderRadius: radius),
+          ClipRRect(borderRadius: radius, child: content),
+        ]),
       ),
     );
   }
@@ -552,7 +541,7 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen>
   Widget _bookNavIcon({required bool isNext}) {
     return Icon(
       isNext ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_up,
-      color: Colors.white,
+      color: Theme.of(context).colorScheme.onSurface,
       size: 32,
     );
   }
@@ -750,8 +739,15 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen>
           bottom: bottom,
           width: panelWidth,
           child: Material(
-            elevation: 8,
-            borderRadius: BorderRadius.circular(8),
+            elevation: 0,
+            color: Theme.of(context).colorScheme.surfaceContainer,
+            shape: BlockShapeBorder(
+              borderRadius: BorderRadius.circular(BlockTheme.radius),
+              lineColor: BlockTheme.lineColor(Theme.of(context).brightness),
+              shadowColor: Theme.of(context).brightness == Brightness.dark
+                  ? Theme.of(context).colorScheme.primary
+                  : BlockTheme.lineColor(Theme.of(context).brightness),
+            ),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: ValueListenableBuilder<int?>(
@@ -791,7 +787,7 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen>
                           onSubmitted: (_) => submit(),
                         ),
                       ),
-                      // 入力中の秒数が現在有効な値と一致する時だけ白く強調する
+                      // 入力中の秒数が現在有効な値と一致する時だけ強調する
                       ListenableBuilder(
                         listenable: controller,
                         builder: (context, _) {
@@ -799,8 +795,12 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen>
                               int.tryParse(controller.text) == current;
                           return IconButton(
                               icon: Icon(Icons.check,
-                                  color:
-                                      active ? Colors.white : Colors.white38),
+                                  color: active
+                                      ? Theme.of(context).colorScheme.onSurface
+                                      : Theme.of(context)
+                                          .colorScheme
+                                          .onSurface
+                                          .withValues(alpha: 0.35)),
                               onPressed: submit);
                         },
                       ),

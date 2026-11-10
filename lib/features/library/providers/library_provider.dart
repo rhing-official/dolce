@@ -11,6 +11,7 @@ import '../../../core/services/thumbnail_service.dart';
 import '../../../core/services/cbz_service.dart';
 import '../../../core/utils/sort_utils.dart';
 import '../../../core/utils/book_path_utils.dart';
+import '../../../core/widgets/app_banner.dart';
 import '../../viewer/providers/viewer_provider.dart';
 
 class LibraryState {
@@ -356,9 +357,7 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
       final picked = await _fileService.pickFolder();
       if (picked == null) {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('ディレクトリ選択がキャンセルされました')),
-          );
+          showAppBanner(context, 'ディレクトリ選択がキャンセルされました');
         }
         return;
       }
@@ -369,28 +368,12 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
       await syncAll();
 
       if (context.mounted) {
-        final messenger = ScaffoldMessenger.of(context);
-        messenger.clearMaterialBanners();
-        messenger.showMaterialBanner(
-          MaterialBanner(
-            content: Text('本棚を追加しました: ${shelf.name}'),
-            actions: [
-              TextButton(
-                onPressed: () => messenger.hideCurrentMaterialBanner(),
-                child: const Text('閉じる'),
-              ),
-            ],
-          ),
-        );
-        Future.delayed(const Duration(seconds: 4), () {
-          messenger.hideCurrentMaterialBanner();
-        });
+        showAppBanner(context, '本棚を追加しました: ${shelf.name}');
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('エラーが発生しました: $e')),
-        );
+        showAppBanner(context, 'エラーが発生しました: $e',
+            duration: const Duration(seconds: 6));
       }
     } finally {
       state = state.copyWith(isLoading: false);

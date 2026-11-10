@@ -104,6 +104,12 @@ abstract class AppLocalizations {
   /// **'設定'**
   String get settings;
 
+  /// No description provided for @close.
+  ///
+  /// In ja, this message translates to:
+  /// **'閉じる'**
+  String get close;
+
   /// No description provided for @cancel.
   ///
   /// In ja, this message translates to:
@@ -293,20 +299,20 @@ abstract class AppLocalizations {
   /// No description provided for @shortcutCtrlF.
   ///
   /// In ja, this message translates to:
-  /// **'お気に入りを開く'**
+  /// **'サイドバーの検索欄にフォーカス'**
   String get shortcutCtrlF;
+
+  /// No description provided for @shortcutCtrlB.
+  ///
+  /// In ja, this message translates to:
+  /// **'お気に入りを開く'**
+  String get shortcutCtrlB;
 
   /// No description provided for @shortcutF1.
   ///
   /// In ja, this message translates to:
   /// **'情報を開く'**
   String get shortcutF1;
-
-  /// No description provided for @shortcutCtrlS.
-  ///
-  /// In ja, this message translates to:
-  /// **'サイドバーの検索欄にフォーカス'**
-  String get shortcutCtrlS;
 
   /// No description provided for @shortcutCtrlA.
   ///
@@ -356,10 +362,22 @@ abstract class AppLocalizations {
   /// **'メニューバーの表示 / 非表示切り替え'**
   String get shortcutSpace;
 
+  /// No description provided for @shortcutT.
+  ///
+  /// In ja, this message translates to:
+  /// **'目次を開く（目次のある本のみ）'**
+  String get shortcutT;
+
+  /// No description provided for @shortcutP.
+  ///
+  /// In ja, this message translates to:
+  /// **'自動ページめくりの開始 / 停止'**
+  String get shortcutP;
+
   /// No description provided for @sidebarSearchHint.
   ///
   /// In ja, this message translates to:
-  /// **'書籍・ディレクトリを検索...'**
+  /// **'検索'**
   String get sidebarSearchHint;
 
   /// No description provided for @noSearchResults.
@@ -445,6 +463,36 @@ abstract class AppLocalizations {
   /// In ja, this message translates to:
   /// **'目次'**
   String get tableOfContents;
+
+  /// No description provided for @accentColorSection.
+  ///
+  /// In ja, this message translates to:
+  /// **'アクセントカラー'**
+  String get accentColorSection;
+
+  /// No description provided for @accentTextColorSection.
+  ///
+  /// In ja, this message translates to:
+  /// **'アクセント色の上の文字色'**
+  String get accentTextColorSection;
+
+  /// No description provided for @accentTextAuto.
+  ///
+  /// In ja, this message translates to:
+  /// **'自動（アクセントに合わせて黒/白）'**
+  String get accentTextAuto;
+
+  /// No description provided for @accentTextBlack.
+  ///
+  /// In ja, this message translates to:
+  /// **'黒'**
+  String get accentTextBlack;
+
+  /// No description provided for @accentTextWhite.
+  ///
+  /// In ja, this message translates to:
+  /// **'白'**
+  String get accentTextWhite;
 
   /// No description provided for @autoPageStart.
   ///

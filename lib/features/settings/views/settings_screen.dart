@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/block_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/settings_provider.dart';
 import '../models/app_settings.dart';
@@ -115,6 +116,45 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         notifier.state = settings.copyWith(theme: val);
                     },
                   ),
+                  const Divider(),
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text(loc.accentColorSection,
+                        style: Theme.of(context).textTheme.titleMedium),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    child: Wrap(spacing: 14, runSpacing: 14, children: [
+                      for (final value in kAccentPresets)
+                        _AccentSwatch(
+                          color: Color(value),
+                          selected: settings.accentColor == value,
+                          onTap: () => notifier.state =
+                              settings.copyWith(accentColor: value),
+                        ),
+                    ]),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+                    child: Text(loc.accentTextColorSection,
+                        style: Theme.of(context).textTheme.titleSmall),
+                  ),
+                  for (final (value, label) in [
+                    (AccentTextColor.auto, loc.accentTextAuto),
+                    (AccentTextColor.black, loc.accentTextBlack),
+                    (AccentTextColor.white, loc.accentTextWhite),
+                  ])
+                    RadioListTile<AccentTextColor>(
+                      title: Text(label),
+                      value: value,
+                      groupValue: settings.accentTextColor,
+                      onChanged: (val) {
+                        if (val != null) {
+                          notifier.state =
+                              settings.copyWith(accentTextColor: val);
+                        }
+                      },
+                    ),
                   const Divider(),
                   Padding(
                     padding: const EdgeInsets.all(16.0),
@@ -406,6 +446,40 @@ class _MobileNavIconSettingsList extends StatelessWidget {
             },
           ),
       ],
+    );
+  }
+}
+
+/// アクセントカラーの選択用スウォッチ（版画の角丸の箱。選択中はチェック付き）
+class _AccentSwatch extends StatelessWidget {
+  final Color color;
+  final bool selected;
+  final VoidCallback onTap;
+  const _AccentSwatch(
+      {required this.color, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 3, bottom: 3),
+      child: blockMaterialBox(
+        context,
+        color: color,
+        child: InkWell(
+          onTap: onTap,
+          child: SizedBox(
+            width: 44,
+            height: 44,
+            child: selected
+                ? Icon(Icons.check,
+                    color: ThemeData.estimateBrightnessForColor(color) ==
+                            Brightness.dark
+                        ? Colors.white
+                        : Colors.black)
+                : null,
+          ),
+        ),
+      ),
     );
   }
 }

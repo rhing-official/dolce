@@ -8,6 +8,9 @@ import 'l10n/app_localizations.dart';
 import 'features/library/models/shelf.dart';
 import 'core/utils/platform_utils.dart';
 import 'core/utils/book_path_utils.dart';
+import 'core/theme/block_theme.dart';
+import 'core/theme/chrome_motion.dart';
+import 'core/widgets/app_banner.dart';
 import 'core/widgets/glass_panel.dart';
 import 'core/widgets/tab_content_builder.dart';
 import 'core/widgets/mobile_shell.dart';
@@ -22,35 +25,7 @@ import 'features/settings/models/app_settings.dart';
 import 'features/library/providers/library_provider.dart';
 import 'core/utils/tab_title_utils.dart';
 
-// Material3のfromSeedはグレー系シードでも内部的に色相を持たせてしまうため、
-// 実際に参照している色ロールは明示的にグレースケールへ上書きする
-ColorScheme _monochromeScheme(Brightness brightness) {
-  final isDark = brightness == Brightness.dark;
-  return ColorScheme.fromSeed(seedColor: Colors.grey, brightness: brightness)
-      .copyWith(
-    primary: isDark ? const Color(0xFFE0E0E0) : const Color(0xFF303030),
-    secondary: isDark ? const Color(0xFFBDBDBD) : const Color(0xFF616161),
-    surface: isDark ? const Color(0xFF121212) : Colors.white,
-    onSurface: isDark ? const Color(0xFFECECEC) : const Color(0xFF1A1A1A),
-    surfaceContainerHigh:
-        isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE8E8E8),
-    surfaceContainerHighest:
-        isDark ? const Color(0xFF303030) : const Color(0xFFE0E0E0),
-    onSurfaceVariant:
-        isDark ? const Color(0xFFB0B0B0) : const Color(0xFF616161),
-    outlineVariant: isDark ? const Color(0xFF424242) : const Color(0xFFD0D0D0),
-    // ★アクティブなタブなど、周囲の背景から確実に浮き立たせたい要素専用の
-    // 色ロール。surfaceの反転（暗背景では明色、明背景では暗色）にすることで、
-    // ガラス効果で背景が半透明・ぼかし気味でも常にコントラストが取れる
-    inverseSurface: isDark ? const Color(0xFFE6E6E6) : const Color(0xFF2A2A2A),
-    onInverseSurface:
-        isDark ? const Color(0xFF1A1A1A) : const Color(0xFFECECEC),
-    // ★AppBar等がスクロール時に重ねるティント色。未上書きだとfromSeedが
-    // 計算したprimary（モノクロ化前の色相）が残り、スクロール時に上部の
-    // 色が浮いて見えるバグの原因になっていた
-    surfaceTint: isDark ? const Color(0xFFE0E0E0) : const Color(0xFF303030),
-  );
-}
+const _fontFallback = ['Noto Sans CJK JP', 'Noto Sans JP', 'Sans-Serif'];
 
 class DolceApp extends ConsumerWidget {
   const DolceApp({super.key});
@@ -63,6 +38,13 @@ class DolceApp extends ConsumerWidget {
       AppTheme.dark => ThemeMode.dark,
     };
 
+    final accent = Color(settings.accentColor);
+    final onAccent = switch (settings.accentTextColor) {
+      AccentTextColor.auto => null,
+      AccentTextColor.black => Colors.black,
+      AccentTextColor.white => Colors.white,
+    };
+
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       locale: switch (settings.language) {
@@ -72,27 +54,10 @@ class DolceApp extends ConsumerWidget {
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       themeMode: themeMode,
-      theme: ThemeData(
-        brightness: Brightness.light,
-        colorScheme: _monochromeScheme(Brightness.light),
-        scaffoldBackgroundColor: Colors.white,
-        useMaterial3: true,
-        fontFamilyFallback: const [
-          'Noto Sans CJK JP',
-          'Noto Sans JP',
-          'Sans-Serif'
-        ],
-      ),
-      darkTheme: ThemeData(
-        brightness: Brightness.dark,
-        colorScheme: _monochromeScheme(Brightness.dark),
-        useMaterial3: true,
-        fontFamilyFallback: const [
-          'Noto Sans CJK JP',
-          'Noto Sans JP',
-          'Sans-Serif'
-        ],
-      ),
+      theme: BlockTheme.light(accent,
+          fontFamilyFallback: _fontFallback, onAccent: onAccent),
+      darkTheme: BlockTheme.dark(accent,
+          fontFamilyFallback: _fontFallback, onAccent: onAccent),
       home: const TabShell(),
     );
   }
@@ -110,15 +75,13 @@ class _TabShellState extends ConsumerState<TabShell>
 
   // パスバーのビューア重ね表示時の表示/非表示(Space)はopacityの瞬間切替では
   // なく、サイドバー・メニューバーと同じスライドアニメーションで駆動する。
-  // ガラス効果(BackdropFilter)はスライド中は外し、静止した時だけ有効にする。
-  // 220msだと速すぎて動きが目に留まらなかったため、体感できる速さまで伸ばし、
-  // イージングも付けて動き自体をはっきりさせる
+  // 速さ・イージングはクローム共通の[kChromeSlideDuration]等に揃える
   late final AnimationController _pathBarAnim = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 1000));
+      vsync: this, duration: kChromeSlideDuration);
   late final Animation<double> _pathBarCurve = CurvedAnimation(
       parent: _pathBarAnim,
-      curve: Curves.easeOutCubic,
-      reverseCurve: Curves.easeInCubic);
+      curve: kChromeSlideCurve,
+      reverseCurve: kChromeSlideReverseCurve);
   bool? _wasDimChrome;
 
   @override
@@ -198,11 +161,11 @@ class _TabShellState extends ConsumerState<TabShell>
         return true;
       }
       if (key == LogicalKeyboardKey.keyF) {
-        notifier.openOrToggleFavorites();
+        ref.read(sidebarFocusRequestProvider.notifier).state++;
         return true;
       }
-      if (key == LogicalKeyboardKey.keyS) {
-        ref.read(sidebarFocusRequestProvider.notifier).state++;
+      if (key == LogicalKeyboardKey.keyB) {
+        notifier.openOrToggleFavorites();
         return true;
       }
       if (key == LogicalKeyboardKey.keyT) {
@@ -225,13 +188,12 @@ class _TabShellState extends ConsumerState<TabShell>
     debugPrint('[Sync] F5が押されました');
     final result = await ref.read(libraryProvider.notifier).syncAll();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(
-          result.added == 0 && result.updated == 0 && result.removed == 0
-              ? '変更はありませんでした'
-              : '更新しました（追加${result.added}件 / 更新${result.updated}件 / 削除${result.removed}件）'),
-      duration: const Duration(seconds: 2),
-    ));
+    showAppBanner(
+        context,
+        result.added == 0 && result.updated == 0 && result.removed == 0
+            ? '変更はありませんでした'
+            : '更新しました（追加${result.added}件 / 更新${result.updated}件 / 削除${result.removed}件）',
+        duration: const Duration(seconds: 3));
   }
 
   @override
@@ -309,7 +271,7 @@ class _TabShellState extends ConsumerState<TabShell>
                   child: GlassPanel(
                     // ビューワー時のオーバーレイ表示と形を統一する（下側のみ角丸）
                     borderRadius: const BorderRadius.vertical(
-                        bottom: Radius.circular(18)),
+                        bottom: Radius.circular(BlockTheme.radius)),
                     child: isVerticalTabs
                         ? const _PathBar(showWindowControls: true)
                         : _buildChromeBar(tabState, notifier, colorScheme),
@@ -330,9 +292,8 @@ class _TabShellState extends ConsumerState<TabShell>
                     animation: _pathBarCurve,
                     builder: (context, _) {
                       final t = _pathBarCurve.value;
-                      final atRest = t == 0.0 || t == 1.0;
                       const radius =
-                          BorderRadius.vertical(bottom: Radius.circular(18));
+                          BorderRadius.vertical(bottom: Radius.circular(BlockTheme.radius));
                       return Positioned(
                         top: -chromeBarHeight + chromeBarHeight * t,
                         left: 0,
@@ -345,17 +306,18 @@ class _TabShellState extends ConsumerState<TabShell>
                           child: SizedBox(
                             height: chromeBarHeight,
                             child: RepaintBoundary(
-                              child: ClipRRect(
-                                borderRadius: radius,
-                                child: Stack(fit: StackFit.expand, children: [
-                                  PanelBackground(
-                                      glass: atRest, borderRadius: radius),
-                                  isVerticalTabs
+                              // 影は枠の外側（右・下）へはみ出すため、パネル全体は
+                              // クリップせず、中身だけを角丸でクリップする
+                              child: Stack(fit: StackFit.expand, children: [
+                                const PanelBackground(borderRadius: radius),
+                                ClipRRect(
+                                  borderRadius: radius,
+                                  child: isVerticalTabs
                                       ? const _PathBar(showWindowControls: true)
                                       : _buildChromeBar(
                                           tabState, notifier, colorScheme),
-                                ]),
-                              ),
+                                ),
+                              ]),
                             ),
                           ),
                         ),
@@ -472,25 +434,24 @@ class _MainAreaState extends ConsumerState<_MainArea>
     with TickerProviderStateMixin {
   bool _hover = false;
   bool _keyboardExpanded = false;
-  // 220msだと速すぎて動きが目に留まらなかったため、体感できる速さまで伸ばし、
-  // イージングも付けて動き自体をはっきりさせる
+  // 速さ・イージングはクローム共通の[kChromeSlideDuration]等に揃える
   late final AnimationController _expandAnim = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 1000));
+      vsync: this, duration: kChromeSlideDuration);
   late final Animation<double> _expandCurve = CurvedAnimation(
       parent: _expandAnim,
-      curve: Curves.easeOutCubic,
-      reverseCurve: Curves.easeInCubic);
+      curve: kChromeSlideCurve,
+      reverseCurve: kChromeSlideReverseCurve);
 
   // ビューア重ね表示中のサイドバー・垂直タブ帯の表示/非表示(Space)を、
   // opacityの瞬間切替ではなくスライドアニメーションで駆動する
   late final AnimationController _dimAnim = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1000),
+      duration: kChromeSlideDuration,
       value: widget.dimChrome ? 1.0 : 0.0);
   late final Animation<double> _dimCurve = CurvedAnimation(
       parent: _dimAnim,
-      curve: Curves.easeOutCubic,
-      reverseCurve: Curves.easeInCubic);
+      curve: kChromeSlideCurve,
+      reverseCurve: kChromeSlideReverseCurve);
 
   // リサイズ中フラグはガラス⇔軽量背景の切り替えに使うが、リサイズの開始/終了は
   // アニメーションのティックを伴わない（既に全展開状態のまま起きる）ため、
@@ -595,8 +556,8 @@ class _MainAreaState extends ConsumerState<_MainArea>
     final favBooks = libraryState.books.where((b) => b.isFavorite).toList();
 
     final railRadius = BorderRadius.horizontal(
-      right: isLeft ? const Radius.circular(18) : Radius.zero,
-      left: isLeft ? Radius.zero : const Radius.circular(18),
+      right: isLeft ? const Radius.circular(BlockTheme.radius) : Radius.zero,
+      left: isLeft ? Radius.zero : const Radius.circular(BlockTheme.radius),
     );
 
     final collapsedRail = SafeArea(
@@ -741,89 +702,89 @@ class _MainAreaState extends ConsumerState<_MainArea>
               // ★buildのローカル変数を参照すると次のsetStateまで値が固定される
               // ため、ホバー状態等はここで毎ティック、フィールドから再計算する
               final t = _expandCurve.value;
-              final expandedNow =
-                  _hover || _resizingN.value || _keyboardExpanded;
               // 通常表示（overlayModeでない）ではdimAnimは常に1.0（常時表示）扱い。
               // ビューア重ね表示時のみSpace(dimChrome)でこの値がアニメーションする
               final dimT = widget.overlayMode ? _dimCurve.value : 1.0;
-              final atRest =
-                  (t == 0.0 || t == 1.0) && (dimT == 0.0 || dimT == 1.0);
-              // パスバー・メニューバーと同じガラス効果に統一する
-              // （ビューア中だけ特別に無効化しない）
-              final glassEnabled = atRest && !_resizingN.value;
               final sidebarEffectiveWidth =
                   ui.lerpDouble(_kSidebarCollapsedWidth, width, t)!;
               final tabStripInset = tabsOnSidebarSide && sidebarIsOuter
                   ? sidebarEffectiveWidth
                   : 0.0;
-              final panelPos = ui.lerpDouble(-width, sidebarInset, t)!;
               // Space非表示時は、opacityの瞬間切替ではなく自分の幅ぶん画面端の
               // 外へスライドさせる。isLeft/verticalTabsLeftの向きに応じて
               // 「外側」方向（left側ならマイナス、right側ならプラス）へ押し出す
               final dimSlide = (1 - dimT);
 
-              // 背景（ガラス⇔軽量）の切替は_PanelBackground内部で行い、childの
-              // ツリー位置と型は常に不変に保つ。ラッパーの型ごと差し替えると
+              // childのツリー位置と型は常に不変に保つ。ラッパーの型ごと差し替えると
               // BookshelfSidebar等が再マウントされ、検索欄のフォーカスや
               // スクロール位置が破棄されてしまう
               Widget panel(Widget child, BorderRadius radius) =>
                   RepaintBoundary(
-                    child: ClipRRect(
-                      borderRadius: radius,
-                      child: Stack(fit: StackFit.expand, children: [
-                        PanelBackground(
-                            glass: glassEnabled, borderRadius: radius),
-                        child,
-                      ]),
-                    ),
+                    child: Stack(fit: StackFit.expand, children: [
+                      PanelBackground(borderRadius: radius),
+                      ClipRRect(borderRadius: radius, child: child),
+                    ]),
                   );
 
+              // 展開幅を使うのは「幅が変わる1枚のパネル」だけ。外側の辺を固定したまま
+              // 幅（＝見える範囲）だけをアニメーションし、中身（畳んだ帯と展開内容）は
+              // 常に同じツリー・同じ位置に置く。帯と展開パネルを2枚に分けて
+              // フェードやスライドで入れ替えると、ホバー領域の継ぎ目で一瞬畳んだり、
+              // 帯が消えて展開内容が出るまでの間にちらつくため
+              final edgeAlign = isLeft ? Alignment.topLeft : Alignment.topRight;
+              final sidebarPanel = Positioned(
+                top: chromeTop,
+                bottom: chromeBottom,
+                left: isLeft ? sidebarInset - dimSlide * sidebarEffectiveWidth : null,
+                right:
+                    isLeft ? null : sidebarInset - dimSlide * sidebarEffectiveWidth,
+                width: sidebarEffectiveWidth,
+                child: MouseRegion(
+                  onEnter: (_) => _setHover(true),
+                  onExit: (_) => _setHover(false),
+                  child: IgnorePointer(
+                    ignoring: !chromeInteractive,
+                    child: panel(
+                      Stack(fit: StackFit.expand, children: [
+                        // 展開内容。畳んでいる間（t==0）も同じ位置に残すが、
+                        // 見えず・触れないようにする（検索欄のフォーカスや
+                        // スクロール位置を保つためツリーからは外さない）
+                        Opacity(
+                          opacity: t > 0 ? 1.0 : 0.0,
+                          child: IgnorePointer(
+                            ignoring: t == 0,
+                            child: ClipRect(
+                              child: Align(
+                                alignment: edgeAlign,
+                                child: SizedBox(
+                                    width: width, child: expandedContent),
+                              ),
+                            ),
+                          ),
+                        ),
+                        // 畳んだ帯。展開が進むにつれて消える
+                        if (t < 1)
+                          IgnorePointer(
+                            ignoring: t > 0.05,
+                            child: Opacity(
+                              opacity: 1 - t,
+                              child: Align(
+                                alignment: edgeAlign,
+                                child: SizedBox(
+                                    width: _kSidebarCollapsedWidth,
+                                    child: collapsedRail),
+                              ),
+                            ),
+                          ),
+                      ]),
+                      railRadius,
+                    ),
+                  ),
+                ),
+              );
+
               return Stack(children: [
-                // 畳んだサイドバーは常時マウントし、境界の細い帯として固定表示する。
-                // 展開が進むにつれ不透明度0までクロスフェードする
-                Positioned(
-                  top: chromeTop,
-                  bottom: chromeBottom,
-                  left: isLeft
-                      ? sidebarInset - dimSlide * _kSidebarCollapsedWidth
-                      : null,
-                  right: isLeft
-                      ? null
-                      : sidebarInset - dimSlide * _kSidebarCollapsedWidth,
-                  width: _kSidebarCollapsedWidth,
-                  child: MouseRegion(
-                    onEnter: (_) => _setHover(true),
-                    onExit: (_) => _setHover(false),
-                    // Space非表示時はスライドで画面外へ出るため不透明度は不要。
-                    // ホバー展開時のクロスフェード(1-t)のみOpacityを使う（大きな
-                    // 半透明レイヤー合成を避けるため、極力ここだけに絞る）
-                    child: IgnorePointer(
-                      ignoring: !chromeInteractive || expandedNow,
-                      child: Opacity(
-                        opacity: 1 - t,
-                        child: panel(collapsedRail, railRadius),
-                      ),
-                    ),
-                  ),
-                ),
-                // 展開時のパネルは、畳んだ帯の上に幅いっぱいスライドして重なる
-                Positioned(
-                  top: chromeTop,
-                  bottom: chromeBottom,
-                  left: isLeft ? panelPos - dimSlide * width : null,
-                  right: isLeft ? null : panelPos - dimSlide * width,
-                  width: width,
-                  child: MouseRegion(
-                    onEnter: (_) => _setHover(true),
-                    onExit: (_) => _setHover(false),
-                    // Opacityは使わない（Space非表示時はスライドだけで画面外に
-                    // 出るため、大きな半透明レイヤー合成を避けられる）
-                    child: IgnorePointer(
-                      ignoring: !chromeInteractive,
-                      child: panel(expandedContent, railRadius),
-                    ),
-                  ),
-                ),
+                sidebarPanel,
                 // 垂直タブ帯。サイドバーと同じ辺にある場合、設定に応じて外側/内側の
                 // 位置を切り替え、サイドバーが展開している間はその実効幅に追従して動く
                 if (isVerticalTabs)
@@ -847,11 +808,11 @@ class _MainAreaState extends ConsumerState<_MainArea>
                             notifier: widget.tabNotifier),
                         BorderRadius.horizontal(
                           right: verticalTabsLeft
-                              ? const Radius.circular(18)
+                              ? const Radius.circular(BlockTheme.radius)
                               : Radius.zero,
                           left: verticalTabsLeft
                               ? Radius.zero
-                              : const Radius.circular(18),
+                              : const Radius.circular(BlockTheme.radius),
                         ),
                       ),
                     ),
@@ -954,8 +915,7 @@ class _PathBar extends ConsumerWidget {
                             style: TextStyle(
                                 color: colorScheme.onSurface,
                                 fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                shadows: _tabTextShadow(context))),
+                                fontWeight: FontWeight.w500)),
                       );
                     }),
                   ])),
@@ -984,19 +944,26 @@ class _PathBar extends ConsumerWidget {
   }
 }
 
-// タブ帯はビューア中、ブラーされた任意の書籍ページの上に重ねて表示される
-// ため、文字色とパネルの下地だけでは背景次第でコントラストが不足し、
-// 「ぼやけて」見えることがある。反対色の縁取り(シャドウ)を常に足すことで、
-// 下地の明暗に関わらず輪郭をはっきりさせる
-List<Shadow> _tabTextShadow(BuildContext context) {
-  final isDark = Theme.of(context).brightness == Brightness.dark;
-  return [
-    Shadow(
-        color: isDark
-            ? Colors.black.withValues(alpha: 0.8)
-            : Colors.white.withValues(alpha: 0.9),
-        blurRadius: 3),
-  ];
+// 版画のタブの見た目。アクティブはアクセントの塗り＋太枠＋硬い影、
+// 非アクティブは白（ダークはパネル色）＋太枠。文字はアクセントを使わず黒/白
+BoxDecoration _tabDecoration(BuildContext context, bool active,
+    {BorderRadius? radius}) {
+  final theme = Theme.of(context);
+  final scheme = theme.colorScheme;
+  final brightness = theme.brightness;
+  return BoxDecoration(
+    color: active
+        ? scheme.primary
+        : (brightness == Brightness.light ? Colors.white : scheme.surface),
+    borderRadius: radius ?? BorderRadius.circular(BlockTheme.radius),
+    border: Border.all(
+        color: BlockTheme.lineColor(brightness), width: BlockTheme.borderWidth),
+  );
+}
+
+Color _tabTextColor(BuildContext context, bool active) {
+  final scheme = Theme.of(context).colorScheme;
+  return active ? scheme.onPrimary : scheme.onSurface;
 }
 
 class _TabWidget extends ConsumerWidget {
@@ -1007,7 +974,6 @@ class _TabWidget extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final active = ref.watch(tabProvider).currentIndex == index;
     final tabNotifier = ref.read(tabProvider.notifier);
-    final colorScheme = Theme.of(context).colorScheme;
     return Listener(
       behavior: HitTestBehavior.translucent,
       onPointerDown: (e) {
@@ -1017,36 +983,23 @@ class _TabWidget extends ConsumerWidget {
         onTap: () => tabNotifier.selectTab(index),
         child: Container(
           height: 30,
-          margin: const EdgeInsets.only(top: 4, right: 4),
+          margin: const EdgeInsets.only(top: 4, right: 6),
           padding: const EdgeInsets.symmetric(horizontal: 10),
-          decoration: BoxDecoration(
-              // アクティブなタブはsurface（周囲の背景と同系色で埋没しがち）ではなく、
-              // 常にコントラストが取れるinverseSurfaceで確実に目立たせる
-              color: active
-                  ? colorScheme.inverseSurface
-                  : colorScheme.onSurface.withValues(alpha: 0.16),
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(6))),
+          decoration: _tabDecoration(context, active),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 140),
                 child: Text(tabDisplayTitle(context, item.title),
                     style: TextStyle(
                         fontSize: 11,
-                        color: active
-                            ? colorScheme.onInverseSurface
-                            : colorScheme.onSurface,
-                        fontWeight: active ? FontWeight.bold : FontWeight.w500,
-                        shadows: active ? null : _tabTextShadow(context)),
+                        color: _tabTextColor(context, active),
+                        fontWeight: active ? FontWeight.bold : FontWeight.w500),
                     overflow: TextOverflow.ellipsis)),
             const SizedBox(width: 6),
             GestureDetector(
                 onTap: () => tabNotifier.closeTab(index),
                 child: Icon(Icons.close,
-                    size: 13,
-                    color: active
-                        ? colorScheme.onInverseSurface
-                        : colorScheme.onSurfaceVariant)),
+                    size: 13, color: _tabTextColor(context, active))),
           ]),
         ),
       ),
@@ -1111,8 +1064,7 @@ class _NewTabButton extends StatelessWidget {
               style: TextStyle(
                   fontSize: 12,
                   color: colorScheme.onSurface,
-                  fontWeight: FontWeight.w500,
-                  shadows: _tabTextShadow(context))),
+                  fontWeight: FontWeight.w500)),
         ]),
       ),
     );
@@ -1129,7 +1081,6 @@ class _VerticalTabWidget extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final active = ref.watch(tabProvider).currentIndex == index;
-    final colorScheme = Theme.of(context).colorScheme;
     return Listener(
       behavior: HitTestBehavior.translucent,
       onPointerDown: (e) {
@@ -1139,34 +1090,23 @@ class _VerticalTabWidget extends ConsumerWidget {
         onTap: () => notifier.selectTab(index),
         child: Container(
           height: 36,
-          margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          // 太枠の分と、右下へはみ出す影の分の余白
+          margin: const EdgeInsets.fromLTRB(8, 3, 12, 5),
           padding: const EdgeInsets.symmetric(horizontal: 10),
-          decoration: BoxDecoration(
-              // アクティブなタブはsurface（周囲の背景と同系色で埋没しがち）ではなく、
-              // 常にコントラストが取れるinverseSurfaceで確実に目立たせる
-              color: active
-                  ? colorScheme.inverseSurface
-                  : colorScheme.onSurface.withValues(alpha: 0.16),
-              borderRadius: BorderRadius.circular(6)),
+          decoration: _tabDecoration(context, active),
           child: Row(children: [
             Expanded(
                 child: Text(tabDisplayTitle(context, item.title),
                     style: TextStyle(
                         fontSize: 12,
-                        color: active
-                            ? colorScheme.onInverseSurface
-                            : colorScheme.onSurface,
-                        fontWeight: active ? FontWeight.bold : FontWeight.w500,
-                        shadows: active ? null : _tabTextShadow(context)),
+                        color: _tabTextColor(context, active),
+                        fontWeight: active ? FontWeight.bold : FontWeight.w500),
                     overflow: TextOverflow.ellipsis)),
             const SizedBox(width: 4),
             GestureDetector(
                 onTap: () => notifier.closeTab(index),
                 child: Icon(Icons.close,
-                    size: 13,
-                    color: active
-                        ? colorScheme.onInverseSurface
-                        : colorScheme.onSurface)),
+                    size: 13, color: _tabTextColor(context, active))),
           ]),
         ),
       ),
