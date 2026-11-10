@@ -96,7 +96,10 @@ class FileService {
           in dir.list(recursive: true, followLinks: false)) {
         if (entity is File) {
           final ext = p.extension(entity.path).toLowerCase();
-          if (ext == '.pdf' || ext == '.cbz' || ext == '.zip') {
+          if (ext == '.pdf' ||
+              ext == '.cbz' ||
+              ext == '.zip' ||
+              ext == '.epub') {
             final stat = await entity.stat();
             files.add(ScannedFile(
                 path: entity.path,
@@ -135,7 +138,10 @@ class FileService {
         await _walkAndroidDir(child, rel, out);
       } else {
         final ext = p.extension(child.name).toLowerCase();
-        if (ext == '.pdf' || ext == '.cbz' || ext == '.zip') {
+        if (ext == '.pdf' ||
+              ext == '.cbz' ||
+              ext == '.zip' ||
+              ext == '.epub') {
           out.add(ScannedFile(
               path: child.uri,
               name: p.basenameWithoutExtension(child.name),

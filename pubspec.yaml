@@ -1,5 +1,5 @@
 name: dolce
-description: A local e-book reader for PDF and CBZ files.
+description: A local e-book reader for PDF, CBZ and EPUB files.
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -13,7 +13,6 @@ dependencies:
     sdk: flutter
   intl: any
 
-  pdfx: ^2.9.2
   archive: ^4.0.9
   flutter_riverpod: ^2.6.1
   hive: ^2.2.3
@@ -28,6 +27,11 @@ dependencies:
   window_manager: ^0.4.2
   docman: ^1.2.0
   package_info_plus: ^9.0.1
+  pdfrx: ^2.4.8
+  url_launcher: ^6.3.3
+  xml: ^7.0.1
+  flutter_widget_from_html_core: ^0.17.4
+  html: ^0.15.7
 
 dev_dependencies:
   flutter_test:

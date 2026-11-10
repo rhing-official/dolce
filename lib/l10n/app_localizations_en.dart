@@ -196,6 +196,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get autoPageTooltip => 'Auto page turn';
 
   @override
+  String get tableOfContents => 'Table of contents';
+
+  @override
   String get autoPageStart => 'Start auto page turn';
 
   @override

@@ -186,6 +186,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get autoPageTooltip => '自動送り';
 
   @override
+  String get tableOfContents => '目次';
+
+  @override
   String get autoPageStart => '自動めくりを開始';
 
   @override

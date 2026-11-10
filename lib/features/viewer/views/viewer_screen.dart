@@ -4,7 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../models/toc_entry.dart';
+import '../models/read_state.dart';
 import '../providers/viewer_provider.dart';
+import '../widgets/epub_reader.dart';
 import '../../../core/providers/tab_provider.dart';
 import '../../../core/utils/platform_utils.dart';
 import '../../../core/widgets/interactive_swipe_back.dart' show kSwipeGestureVelocityThreshold;
@@ -215,6 +219,10 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen>
               return KeyEventResult.handled;
             }
           }
+          if (!isCtrl && !isAlt && key == LogicalKeyboardKey.keyT) {
+            if (state.toc.isNotEmpty) _showToc(state, notifier);
+            return KeyEventResult.handled;
+          }
           if (!isCtrl && !isAlt && key == LogicalKeyboardKey.keyP) {
             notifier.toggleAutoPlay();
             return KeyEventResult.handled;
@@ -257,6 +265,7 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen>
           body: Stack(children: [
             LayoutBuilder(builder: (context, constraints) {
               final width = constraints.maxWidth;
+              final height = constraints.maxHeight;
               // ズーム未使用時（スケール1.0）はInteractiveViewer側に
               // パンできる余地が無く、パンを有効にしたままだと縦スワイプの
               // ジェスチャーアリーナを食い合ってしまう。ズーム中だけパンを
@@ -267,7 +276,10 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen>
               return Listener(
                 behavior: HitTestBehavior.opaque,
                 onPointerSignal: (event) {
-                  if (event is PointerScrollEvent) _handleZoom(event);
+                  // EPUBはホイールで本文をスクロールするためズームしない
+                  if (event is PointerScrollEvent && notifier.epub == null) {
+                    _handleZoom(event);
+                  }
                 },
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
@@ -275,6 +287,13 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen>
                   // 右1/3=次ページ（ページめくり方向はpageDirection設定で反転）
                   onTapUp: (details) {
                     _focusNode.requestFocus();
+                    // ページ内リンク（目次・参照・URL）は3分割より優先する
+                    final link =
+                        _hitLink(details.localPosition, width, height, state);
+                    if (link != null) {
+                      _openLink(link, notifier);
+                      return;
+                    }
                     final dx = details.localPosition.dx;
                     if (dx < width / 3) {
                       isLeftToNext
@@ -292,7 +311,7 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen>
                   // （↑/↓キーのswitchBookとマッピングを揃える。上スワイプ＝
                   // 次の本＝↓キー、下スワイプ＝前の本＝↑キー）。ズーム中は
                   // パン操作を優先するためスキップする
-                  onVerticalDragEnd: isMobilePlatform
+                  onVerticalDragEnd: isMobilePlatform && notifier.epub == null
                       ? (details) {
                           if (isZoomed) return;
                           final velocity = details.primaryVelocity ?? 0;
@@ -305,22 +324,48 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen>
                         }
                       : null,
                   child: SizedBox.expand(
-                    child: InteractiveViewer(
-                      transformationController: _transformationController,
-                      minScale: 1.0,
-                      maxScale: 10.0,
-                      panEnabled: isZoomed,
-                      scaleEnabled: false,
-                      child: Center(
-                          child: notifier.currentImageBytes != null
-                              ? Image.memory(notifier.currentImageBytes!,
-                                  fit: BoxFit.contain,
-                                  width: double.infinity,
-                                  height: double.infinity,
-                                  gaplessPlayback: true)
-                              : const CircularProgressIndicator(
-                                  color: Colors.white24)),
-                    ),
+                    child: notifier.epub != null
+                        ? (notifier.chapterHtml == null
+                            ? const Center(
+                                child: CircularProgressIndicator(
+                                    color: Colors.white24))
+                            : EpubReader(
+                                key: ValueKey(state.currentPage),
+                                book: notifier.epub!,
+                                chapterIndex: state.currentPage,
+                                html: notifier.chapterHtml!,
+                                takeAnchor: () {
+                                  final a = notifier.pendingAnchor;
+                                  notifier.pendingAnchor = null;
+                                  return a;
+                                },
+                                onJump: (chapter, anchor) {
+                                  notifier.pendingAnchor = anchor;
+                                  notifier.jumpToPage(chapter);
+                                },
+                              ))
+                        : InteractiveViewer(
+                            transformationController: _transformationController,
+                            minScale: 1.0,
+                            maxScale: 10.0,
+                            panEnabled: isZoomed,
+                            scaleEnabled: false,
+                            child: Center(
+                                child: notifier.currentPdfImage != null
+                                    ? RawImage(
+                                        image: notifier.currentPdfImage,
+                                        fit: BoxFit.contain,
+                                        width: double.infinity,
+                                        height: double.infinity)
+                                    : notifier.currentImageBytes != null
+                                    ? Image.memory(notifier.currentImageBytes!,
+                                        fit: BoxFit.contain,
+                                        width: double.infinity,
+                                        height: double.infinity,
+                                        gaplessPlayback: true)
+                                    : const CircularProgressIndicator(
+                                        color: Colors.white24)),
+                          ),
                   ),
                 ),
               );
@@ -402,27 +447,35 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen>
             icon: const Icon(Icons.skip_next, color: Colors.white),
             onPressed: () =>
                 notifier.jumpToPage(isLeftToNext ? 0 : state.totalPages - 1)),
-        const SizedBox(width: 8),
-        GestureDetector(
-          onLongPressStart: (details) =>
-              _showAutoPageMenu(details.globalPosition),
-          onLongPressMoveUpdate: (details) =>
-              _autoHover.value = _autoItemAt(details.globalPosition),
-          onLongPressEnd: (details) {
-            final index = _autoItemAt(details.globalPosition);
-            if (index != null) _applyAutoPageSeconds(_autoPagePresets[index]);
-          },
-          // tooltip未指定の理由は向き固定ボタンと同じ（長押しが競合するため）
-          // 長押しメニューと競合しないよう、ツールチップはホバー専用(manual)
-          child: Tooltip(
-            message: loc.autoPageTooltip,
-            triggerMode: TooltipTriggerMode.manual,
-            child: IconButton(
-                icon: Icon(state.autoPlay ? Icons.pause : Icons.play_arrow,
-                    color: Colors.white),
-                onPressed: notifier.toggleAutoPlay),
+        if (state.toc.isNotEmpty)
+          IconButton(
+              tooltip: loc.tableOfContents,
+              icon: const Icon(Icons.list, color: Colors.white),
+              onPressed: () => _showToc(state, notifier)),
+        // EPUBは章単位のため自動ページめくりは対象外
+        if (notifier.epub == null) ...[
+          const SizedBox(width: 8),
+          GestureDetector(
+            onLongPressStart: (details) =>
+                _showAutoPageMenu(details.globalPosition),
+            onLongPressMoveUpdate: (details) =>
+                _autoHover.value = _autoItemAt(details.globalPosition),
+            onLongPressEnd: (details) {
+              final index = _autoItemAt(details.globalPosition);
+              if (index != null) _applyAutoPageSeconds(_autoPagePresets[index]);
+            },
+            // tooltip未指定の理由は向き固定ボタンと同じ（長押しが競合するため）
+            // 長押しメニューと競合しないよう、ツールチップはホバー専用(manual)
+            child: Tooltip(
+              message: loc.autoPageTooltip,
+              triggerMode: TooltipTriggerMode.manual,
+              child: IconButton(
+                  icon: Icon(state.autoPlay ? Icons.pause : Icons.play_arrow,
+                      color: Colors.white),
+                  onPressed: notifier.toggleAutoPlay),
+            ),
           ),
-        ),
+        ],
         const SizedBox(width: 8),
         IconButton(
             tooltip: isLeftToNext ? loc.nextBook : loc.previousBook,
@@ -549,6 +602,91 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen>
         settings.copyWith(screenOrientationLock: selected);
   }
 
+  // タップ位置（ビューア座標）にあるページ内リンクを返す。ズーム/パン中は
+  // InteractiveViewerの変換を逆算してシーン座標へ戻し、BoxFit.containで
+  // 描画されているページ画像の矩形に対する正規化座標へ変換して照合する
+  BookLink? _hitLink(
+      Offset local, double width, double height, ReadState state) {
+    final aspect = state.pageAspect;
+    if (state.links.isEmpty || aspect == null || height <= 0) return null;
+    final scene = _transformationController.toScene(local);
+    double drawW, drawH;
+    if (width / height > aspect) {
+      drawH = height;
+      drawW = height * aspect;
+    } else {
+      drawW = width;
+      drawH = width / aspect;
+    }
+    final left = (width - drawW) / 2;
+    final top = (height - drawH) / 2;
+    final nx = (scene.dx - left) / drawW;
+    final ny = (scene.dy - top) / drawH;
+    if (nx < 0 || nx > 1 || ny < 0 || ny > 1) return null;
+    for (final link in state.links) {
+      if (link.rect.contains(Offset(nx, ny))) return link;
+    }
+    return null;
+  }
+
+  void _openLink(BookLink link, ViewerNotifier notifier) {
+    final page = link.pageIndex;
+    if (page != null) {
+      notifier.jumpToPage(page);
+    } else if (link.url != null) {
+      launchUrl(link.url!, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  void _showToc(ReadState state, ViewerNotifier notifier) {
+    final loc = AppLocalizations.of(context)!;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => SafeArea(
+        child: ConstrainedBox(
+          constraints:
+              BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.7),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Text(loc.tableOfContents,
+                  style: Theme.of(ctx).textTheme.titleMedium),
+            ),
+            const Divider(height: 1),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: state.toc.length,
+                itemBuilder: (_, i) {
+                  final e = state.toc[i];
+                  return ListTile(
+                    dense: true,
+                    contentPadding:
+                        EdgeInsets.only(left: 16.0 + e.depth * 20, right: 16),
+                    title: Text(e.title,
+                        maxLines: 2, overflow: TextOverflow.ellipsis),
+                    trailing: Text('${e.pageIndex + 1}'),
+                    selected: e.pageIndex == state.currentPage,
+                    onTap: () {
+                      Navigator.of(ctx).pop();
+                      if (notifier.epub != null) {
+                        notifier.jumpToEpubToc(i);
+                      } else {
+                        notifier.jumpToPage(e.pageIndex);
+                      }
+                      _focusNode.requestFocus();
+                    },
+                  );
+                },
+              ),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+
   int? _autoItemAt(Offset global) {
     if (_autoMenuEntry == null) return null;
     for (var i = 0; i < _autoItemKeys.length; i++) {
@@ -591,8 +729,8 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen>
     }
     final controller = _autoText;
     const panelWidth = 180.0;
-    final left = (globalPosition.dx - panelWidth / 2)
-        .clamp(8.0, (screen.width - panelWidth - 8).clamp(8.0, double.infinity));
+    final left = (globalPosition.dx - panelWidth / 2).clamp(
+        8.0, (screen.width - panelWidth - 8).clamp(8.0, double.infinity));
     final bottom = screen.height - globalPosition.dy + 8;
 
     void submit() {
@@ -618,60 +756,57 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen>
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: ValueListenableBuilder<int?>(
                 valueListenable: _autoHover,
-                builder: (context, hover, _) => Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      for (var i = 0; i < _autoPagePresets.length; i++)
-                        Container(
-                          key: _autoItemKeys[i],
-                          height: 36,
-                          color: hover == i
-                              ? Theme.of(context).highlightColor
-                              : null,
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          child: Row(children: [
-                            SizedBox(
-                                width: 24,
-                                child: _autoPagePresets[i] == current
-                                    ? const Icon(Icons.check, size: 16)
-                                    : null),
-                            Text(loc.autoPageSecondsItem(_autoPagePresets[i])),
-                          ]),
+                builder: (context, hover, _) =>
+                    Column(mainAxisSize: MainAxisSize.min, children: [
+                  for (var i = 0; i < _autoPagePresets.length; i++)
+                    Container(
+                      key: _autoItemKeys[i],
+                      height: 36,
+                      color:
+                          hover == i ? Theme.of(context).highlightColor : null,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Row(children: [
+                        SizedBox(
+                            width: 24,
+                            child: _autoPagePresets[i] == current
+                                ? const Icon(Icons.check, size: 16)
+                                : null),
+                        Text(loc.autoPageSecondsItem(_autoPagePresets[i])),
+                      ]),
+                    ),
+                  const Divider(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Row(children: [
+                      Expanded(
+                        child: TextField(
+                          controller: controller,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly
+                          ],
+                          decoration: InputDecoration(
+                              isDense: true,
+                              suffixText: loc.autoPageSecondsUnit),
+                          onSubmitted: (_) => submit(),
                         ),
-                      const Divider(height: 8),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: Row(children: [
-                          Expanded(
-                            child: TextField(
-                              controller: controller,
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly
-                              ],
-                              decoration: InputDecoration(
-                                  isDense: true,
-                                  suffixText: loc.autoPageSecondsUnit),
-                              onSubmitted: (_) => submit(),
-                            ),
-                          ),
-                          // 入力中の秒数が現在有効な値と一致する時だけ白く強調する
-                          ListenableBuilder(
-                            listenable: controller,
-                            builder: (context, _) {
-                              final active =
-                                  int.tryParse(controller.text) == current;
-                              return IconButton(
-                                  icon: Icon(Icons.check,
-                                      color: active
-                                          ? Colors.white
-                                          : Colors.white38),
-                                  onPressed: submit);
-                            },
-                          ),
-                        ]),
+                      ),
+                      // 入力中の秒数が現在有効な値と一致する時だけ白く強調する
+                      ListenableBuilder(
+                        listenable: controller,
+                        builder: (context, _) {
+                          final active =
+                              int.tryParse(controller.text) == current;
+                          return IconButton(
+                              icon: Icon(Icons.check,
+                                  color:
+                                      active ? Colors.white : Colors.white38),
+                              onPressed: submit);
+                        },
                       ),
                     ]),
+                  ),
+                ]),
               ),
             ),
           ),

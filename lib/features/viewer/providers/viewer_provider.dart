@@ -1,13 +1,19 @@
 import 'dart:async';
+import 'dart:ui' as ui show Image;
+import 'dart:ui' show Rect;
 import 'dart:typed_data';
+import 'package:flutter/widgets.dart' show WidgetsBinding;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:archive/archive.dart';
-import 'package:pdfx/pdfx.dart';
+import 'package:pdfrx/pdfrx.dart';
+import '../../../core/utils/pdf_render.dart';
 import '../models/read_state.dart';
+import '../models/toc_entry.dart';
 import '../../library/providers/library_provider.dart';
 import '../../settings/providers/settings_provider.dart';
 import '../../library/models/book.dart';
 import '../../../core/providers/tab_provider.dart';
+import '../../../core/services/epub_service.dart';
 import '../../../core/services/file_service.dart';
 import '../../../core/utils/sort_utils.dart';
 import '../../../core/utils/book_path_utils.dart';
@@ -28,10 +34,20 @@ class ViewerNotifier extends StateNotifier<ReadState> {
   Archive? _cachedArchive;
   List<ArchiveFile>? _sortedImages;
   PdfDocument? _pdfDocument;
+  EpubBook? _epub;
+  String? _chapterHtml; // EPUBの現在の章のHTML
+  // 章ジャンプ時に表示後スクロールしたいアンカーID（EPUBReaderが1度だけ消費する）
+  String? pendingAnchor;
   // decodeStream()はページ内容を都度この元ストリームから遅延展開するため、
   // decode完了後もビューア終了までクローズしてはいけない
   InputFileStream? _cbzInputStream;
   Uint8List? _currentImageBytes; // ★ 現在の画像データを保持
+  // PDFは描画結果をPNGへ再エンコードせずui.Imageのまま表示する
+  ui.Image? _currentPdfImage;
+  // 直近に描画したPDFページ（現在+前後の先読み）。キーは0始まりのページ番号
+  final Map<int, _RenderedPdfPage> _pdfCache = {};
+  // ページ連打時に古い描画結果で上書きしないための世代番号
+  int _loadGeneration = 0;
 
   bool _initStarted = false;
   Timer? _autoTimer;
@@ -66,7 +82,11 @@ class ViewerNotifier extends StateNotifier<ReadState> {
       if (book.format == BookFormat.pdf) {
         final file = await FileService.materializeLocalFile(book.filePath);
         _pdfDocument = await PdfDocument.openFile(file.path);
-        total = _pdfDocument!.pagesCount;
+        total = _pdfDocument!.pages.length;
+      } else if (book.format == BookFormat.epub) {
+        final file = await FileService.materializeLocalFile(book.filePath);
+        _epub = await EpubService.open(file.path);
+        total = _epub!.chapters.length;
       } else {
         final file = await FileService.materializeLocalFile(book.filePath);
         _cbzInputStream = InputFileStream(file.path);
@@ -83,6 +103,9 @@ class ViewerNotifier extends StateNotifier<ReadState> {
         });
         total = _sortedImages!.length;
       }
+      final toc = _pdfDocument != null
+          ? await _loadPdfToc()
+          : (_epub != null ? _epubToc() : <TocEntry>[]);
       // 前回の続きから再開する（未読/初回はlastPage=0なので先頭から）
       final resumePage = total > 0 ? book.lastPage.clamp(0, total - 1) : 0;
       state = state.copyWith(
@@ -90,6 +113,7 @@ class ViewerNotifier extends StateNotifier<ReadState> {
           filePath: book.filePath,
           format: book.format,
           totalPages: total,
+          toc: toc,
           currentPage: resumePage,
           isLoading: false);
       // totalPagesはビューアでしか算出できないため、ここで初めてBookへ保存する。
@@ -106,29 +130,128 @@ class ViewerNotifier extends StateNotifier<ReadState> {
     }
   }
 
+  // PDFのアウトライン（しおり）を階層付きの平坦なリストにする
+  Future<List<TocEntry>> _loadPdfToc() async {
+    final result = <TocEntry>[];
+    void walk(List<PdfOutlineNode> nodes, int depth) {
+      for (final n in nodes) {
+        final page = n.dest?.pageNumber;
+        if (page != null && page >= 1) {
+          result.add(TocEntry(n.title, page - 1, depth));
+        }
+        walk(n.children, depth + 1);
+      }
+    }
+
+    try {
+      walk(await _pdfDocument!.loadOutline(), 0);
+    } catch (_) {}
+    return result;
+  }
+
+  List<TocEntry> _epubToc() => [
+        for (final e in _epub!.toc) TocEntry(e.title, e.chapterIndex, e.depth)
+      ];
+
+  EpubBook? get epub => _epub;
+  String? get chapterHtml => _chapterHtml;
+
+  /// 目次項目（章番号+アンカー）へ移動する。アンカーは表示後にスクロールする
+  void jumpToEpubToc(int tocIndex) {
+    final e = _epub!.toc[tocIndex];
+    pendingAnchor = e.fragment;
+    jumpToPage(e.chapterIndex);
+  }
+
+  // ページ内リンクを正規化座標（左上原点）のBookLinkへ変換する
+  Future<List<BookLink>> _loadPdfLinks(PdfPage page) async {
+    final links = <BookLink>[];
+    try {
+      for (final l in await page.loadLinks()) {
+        final destPage = l.dest?.pageNumber;
+        if (destPage == null && l.url == null) continue;
+        for (final r in l.rects) {
+          links.add(BookLink(
+              Rect.fromLTRB(r.left / page.width, 1 - r.top / page.height,
+                  r.right / page.width, 1 - r.bottom / page.height),
+              pageIndex: destPage != null ? destPage - 1 : null,
+              url: destPage == null ? l.url : null));
+        }
+      }
+    } catch (_) {}
+    return links;
+  }
+
+  // PDFの1ページ分の描画結果（画像・ページ内リンク・縦横比）
+  Future<_RenderedPdfPage?> _renderPdfPage(int index) async {
+    final cached = _pdfCache[index];
+    if (cached != null) return cached;
+    final doc = _pdfDocument;
+    if (doc == null || index < 0 || index >= doc.pages.length) return null;
+    final page = doc.pages[index];
+    final image = await renderPdfPageImage(page);
+    if (image == null) return null;
+    final rendered = _RenderedPdfPage(
+        image, await _loadPdfLinks(page), page.width / page.height);
+    _pdfCache[index] = rendered;
+    // 現在ページから遠いものから破棄して常に数ページ分だけ保持する
+    while (_pdfCache.length > 3) {
+      // 表示中の画像（_currentPdfImage）は、新しいページの描画が終わるまで
+      // 画面に出続けるため、遠くへジャンプした場合でも破棄しない
+      final candidates =
+          _pdfCache.keys.where((k) => _pdfCache[k]!.image != _currentPdfImage);
+      if (candidates.isEmpty) break;
+      final far = candidates.reduce((a, b) =>
+          (a - state.currentPage).abs() >= (b - state.currentPage).abs()
+              ? a
+              : b);
+      final old = _pdfCache.remove(far)!;
+      // 描画中のフレームがまだ参照している可能性があるため、次フレームで破棄する
+      WidgetsBinding.instance
+          .addPostFrameCallback((_) => old.image.dispose());
+    }
+    return rendered;
+  }
+
   // ★ 画像データを非同期で読み込み、stateを更新する
   Future<void> _loadCurrentImage() async {
-    Uint8List? bytes;
+    if (_epub != null) {
+      _chapterHtml = _epub!.chapterHtml(state.currentPage);
+      state = state.copyWith(); // リビルド通知
+      return;
+    }
+    final generation = ++_loadGeneration;
     if (state.format == BookFormat.pdf && _pdfDocument != null) {
-      // Androidはページの並列レンダリングを許可しないため、render→closeを
-      // 必ず順番に完了させる（前のページを閉じる前に次を開かない）
-      final page = await _pdfDocument!.getPage(state.currentPage + 1);
-      try {
-        final image = await page.render(
-          width: page.width * 2,
-          height: page.height * 2,
-          format: PdfPageImageFormat.png,
-        );
-        bytes = image?.bytes;
-      } finally {
-        await page.close();
-      }
-    } else if (_sortedImages != null) {
+      final index = state.currentPage;
+      final rendered = await _renderPdfPage(index);
+      // 連打などで既に別のページへ移っていたら、この結果は捨てる
+      if (!mounted || generation != _loadGeneration || rendered == null) return;
+      _currentPdfImage = rendered.image;
+      _currentImageBytes = null;
+      state = state.copyWith(
+          links: rendered.links, pageAspect: rendered.aspect);
+      // 次→前の順に先読みして、ページ送りの待ち時間を減らす
+      _prefetchPdf(index + 1, generation);
+      return;
+    }
+    Uint8List? bytes;
+    if (_sortedImages != null) {
       bytes = _sortedImages![state.currentPage].content;
     }
+    _currentPdfImage = null;
     _currentImageBytes = bytes;
     state = state.copyWith(); // リビルド通知
   }
+
+  Future<void> _prefetchPdf(int index, int generation) async {
+    try {
+      await _renderPdfPage(index);
+      if (generation != _loadGeneration || !mounted) return;
+      await _renderPdfPage(state.currentPage - 1);
+    } catch (_) {}
+  }
+
+  ui.Image? get currentPdfImage => _currentPdfImage;
 
   Uint8List? get currentImageBytes => _currentImageBytes;
 
@@ -232,8 +355,19 @@ class ViewerNotifier extends StateNotifier<ReadState> {
   @override
   void dispose() {
     _autoTimer?.cancel();
-    _pdfDocument?.close();
+    for (final r in _pdfCache.values) {
+      r.image.dispose();
+    }
+    _pdfCache.clear();
+    _pdfDocument?.dispose();
     _cbzInputStream?.close();
     super.dispose();
   }
+}
+
+class _RenderedPdfPage {
+  final ui.Image image;
+  final List<BookLink> links;
+  final double aspect;
+  _RenderedPdfPage(this.image, this.links, this.aspect);
 }

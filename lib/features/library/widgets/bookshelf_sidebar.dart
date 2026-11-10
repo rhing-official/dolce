@@ -1,4 +1,4 @@
-import 'dart:io';
+import '../../../core/utils/thumb_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/shelf.dart';
@@ -161,7 +161,7 @@ class _BookshelfSidebarState extends ConsumerState<BookshelfSidebar> {
                           child: ListTile(
                             dense: true,
                             leading: b.thumbnailPath != null
-                                ? Image.file(File(b.thumbnailPath!),
+                                ? Image(image: thumbProvider(b.thumbnailPath!),
                                     width: 24,
                                     height: 32,
                                     fit: BoxFit.cover,
@@ -223,7 +223,7 @@ class _BookshelfSidebarState extends ConsumerState<BookshelfSidebar> {
                           child: ListTile(
                             dense: true,
                             leading: b.thumbnailPath != null
-                                ? Image.file(File(b.thumbnailPath!),
+                                ? Image(image: thumbProvider(b.thumbnailPath!),
                                     width: 24,
                                     height: 32,
                                     fit: BoxFit.cover,

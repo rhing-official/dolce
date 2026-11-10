@@ -1,6 +1,6 @@
 # dolce
 
-PDF・CBZ 形式の電子書籍/コミックをローカルで管理・閲覧する Flutter 製クロスプラットフォームリーダー。
+PDF・CBZ・EPUB 形式の電子書籍/コミックをローカルで管理・閲覧する Flutter 製クロスプラットフォームリーダー。
 
 キャッチコピー: 「本と、二人きり」
 
@@ -25,7 +25,9 @@ Flutter (Dart) / SDK `>=3.0.0 <4.0.0`
 
 | パッケージ | 用途 |
 |---|---|
-| pdfx | PDF表示・レンダリング |
+| pdfrx | PDFレンダリング・目次(アウトライン)・ページ内リンク取得 |
+| xml / html / flutter_widget_from_html_core | EPUBの解析(OPF/NCX/nav)とHTML描画 |
+| url_launcher | 書籍内の外部リンクを開く |
 | archive | CBZ (ZIP) 展開 |
 | flutter_riverpod | 状態管理 |
 | hive / hive_flutter | ローカルDB（書籍・設定・本棚） |
@@ -130,6 +132,7 @@ flutter build linux     # / build windows / build apk         # ビルド
 | `Ctrl+←` / `Ctrl+→` | 最初/最後のページへ |
 | `Shift+←` / `Shift+→` | 同フォルダ内の前/次の本を開く |
 | `Space` | UIオーバーレイ表示切り替え |
+| `T` | 目次を開く（目次のある本のみ） |
 | `P` | 自動ページめくりの開始/停止（間隔は下部メニューの再生ボタン長押しで選択） |
 | `Esc` | タブ内で1つ上の階層に戻る（タブは閉じない） |
 | `Alt+←` / `Alt+→` | タブ内ナビゲーション履歴の戻る/進む |

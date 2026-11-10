@@ -83,6 +83,7 @@
   "previousBook": "前の本へ",
   "autoPageSecondsUnit": "秒",
   "autoPageTooltip": "自動送り",
+  "tableOfContents": "目次",
   "autoPageStart": "自動めくりを開始",
   "autoPageStop": "自動めくりを停止",
   "autoPageSecondsItem": "{seconds}秒ごと",

@@ -1,4 +1,4 @@
-import 'dart:io';
+import '../../../core/utils/thumb_image.dart';
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -323,7 +323,7 @@ class _FolderItemState extends ConsumerState<_FolderItem> {
     _thumbsReady = paths.isEmpty;
     if (paths.isEmpty) return;
     Future.wait(paths.map((path) =>
-            precacheImage(FileImage(File(path)), context).catchError((_) {})))
+            precacheImage(thumbProvider(path), context).catchError((_) {})))
         .then((_) {
       if (mounted && listEquals(_precachingPaths, paths)) {
         setState(() => _thumbsReady = true);
@@ -501,7 +501,7 @@ class _FolderItemState extends ConsumerState<_FolderItem> {
                         left: i * 8.0,
                         right: (thumbBooks.length - 1 - i) * 8.0,
                         child: b.thumbnailPath != null
-                            ? Image.file(File(b.thumbnailPath!),
+                            ? Image(image: thumbProvider(b.thumbnailPath!),
                                 fit: BoxFit.cover,
                                 gaplessPlayback: true,
                                 color: i < thumbBooks.length - 1
@@ -694,7 +694,7 @@ class _BookItemState extends ConsumerState<_BookItem> {
                     }
                   },
                   child: widget.book.thumbnailPath != null
-                      ? Image.file(File(widget.book.thumbnailPath!),
+                      ? Image(image: thumbProvider(widget.book.thumbnailPath!),
                           fit: BoxFit.contain,
                           width: double.infinity,
                           height: double.infinity,

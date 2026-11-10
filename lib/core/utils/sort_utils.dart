@@ -18,11 +18,20 @@ class SortUtils {
     return a.filePath.compareTo(b.filePath);
   }
 
+  // 比較のたびにRegExpを生成すると、数百冊のソートで大量の生成コストがかかる
+  // ため、使い回せるものはstatic finalにしておく
+  static final _digit = RegExp(r'[0-9]');
+  static final _alpha = RegExp(r'[a-zA-Z]');
+  static final _hiragana = RegExp(r'[ぁ-ん]');
+  static final _katakana = RegExp(r'[ァ-ヶー]');
+  static final _chunks = RegExp(r'(\d+)|(\D+)');
+  static final _hasDigit = RegExp(r'\d');
+
   static int _getCharWeight(String char) {
-    if (RegExp(r'[0-9]').hasMatch(char)) return 0;
-    if (RegExp(r'[a-zA-Z]').hasMatch(char)) return 1;
-    if (RegExp(r'[ぁ-ん]').hasMatch(char)) return 2;
-    if (RegExp(r'[ァ-ヶー]').hasMatch(char)) return 3;
+    if (_digit.hasMatch(char)) return 0;
+    if (_alpha.hasMatch(char)) return 1;
+    if (_hiragana.hasMatch(char)) return 2;
+    if (_katakana.hasMatch(char)) return 3;
     return 4;
   }
 
@@ -33,13 +42,12 @@ class SortUtils {
     int weightA = _getCharWeight(a[0]);
     int weightB = _getCharWeight(b[0]);
     if (weightA != weightB) return weightA.compareTo(weightB);
-    final re = RegExp(r'(\d+)|(\D+)');
-    final mA = re.allMatches(a.toLowerCase()).toList();
-    final mB = re.allMatches(b.toLowerCase()).toList();
+    final mA = _chunks.allMatches(a.toLowerCase()).toList();
+    final mB = _chunks.allMatches(b.toLowerCase()).toList();
     for (int i = 0; i < mA.length && i < mB.length; i++) {
       final aPart = mA[i].group(0)!;
       final bPart = mB[i].group(0)!;
-      if (RegExp(r'\d').hasMatch(aPart) && RegExp(r'\d').hasMatch(bPart)) {
+      if (_hasDigit.hasMatch(aPart) && _hasDigit.hasMatch(bPart)) {
         final aNum = int.parse(aPart);
         final bNum = int.parse(bPart);
         if (aNum != bNum) return aNum.compareTo(bNum);

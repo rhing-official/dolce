@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:pdfrx/pdfrx.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:flutter/gestures.dart';
 
@@ -15,6 +16,8 @@ import 'features/settings/models/app_settings.dart';
 void main() async {
   // 1. Flutterとウィンドウ管理の初期化
   WidgetsFlutterBinding.ensureInitialized();
+  // pdfrxはウィジェットを経由せず直接PdfDocumentを開くため、先に初期化しておく
+  await pdfrxFlutterInitialize();
   // window_managerはAndroidに実装がないため、デスクトップ環境の時だけ初期化する
   if (isDesktopPlatform) await windowManager.ensureInitialized();
 

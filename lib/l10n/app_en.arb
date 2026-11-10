@@ -70,6 +70,7 @@
   "previousBook": "Previous Book",
   "autoPageSecondsUnit": "s",
   "autoPageTooltip": "Auto page turn",
+  "tableOfContents": "Table of contents",
   "autoPageStart": "Start auto page turn",
   "autoPageStop": "Stop auto page turn",
   "autoPageSecondsItem": "Every {seconds} s",

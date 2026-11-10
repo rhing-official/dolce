@@ -1,4 +1,4 @@
-import 'dart:io';
+import '../../../core/utils/thumb_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
@@ -153,7 +153,7 @@ class _TabCard extends StatelessWidget {
                   width: double.infinity,
                   color: colorScheme.surfaceContainerHighest,
                   child: thumbnailPath != null
-                      ? Image.file(File(thumbnailPath),
+                      ? Image(image: thumbProvider(thumbnailPath),
                           fit: BoxFit.cover,
                           width: double.infinity,
                           height: double.infinity,

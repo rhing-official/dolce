@@ -1,4 +1,4 @@
-import 'dart:io';
+import '../../../core/utils/thumb_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/library_provider.dart';
@@ -71,7 +71,7 @@ class _MobileSearchScreenState extends ConsumerState<MobileSearchScreen> {
                   for (final book in results.books)
                     ListTile(
                       leading: book.thumbnailPath != null
-                          ? Image.file(File(book.thumbnailPath!),
+                          ? Image(image: thumbProvider(book.thumbnailPath!),
                               width: 32,
                               height: 44,
                               fit: BoxFit.cover,

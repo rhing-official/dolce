@@ -92,6 +92,8 @@ class BookFormatAdapter extends TypeAdapter<BookFormat> {
         return BookFormat.pdf;
       case 1:
         return BookFormat.cbz;
+      case 2:
+        return BookFormat.epub;
       default:
         return BookFormat.pdf;
     }
@@ -105,6 +107,9 @@ class BookFormatAdapter extends TypeAdapter<BookFormat> {
         break;
       case BookFormat.cbz:
         writer.writeByte(1);
+        break;
+      case BookFormat.epub:
+        writer.writeByte(2);
         break;
     }
   }

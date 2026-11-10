@@ -8,6 +8,8 @@ enum BookFormat {
   pdf,
   @HiveField(1)
   cbz,
+  @HiveField(2)
+  epub,
 }
 
 @HiveType(typeId: 0)

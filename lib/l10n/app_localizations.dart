@@ -440,6 +440,12 @@ abstract class AppLocalizations {
   /// **'自動送り'**
   String get autoPageTooltip;
 
+  /// No description provided for @tableOfContents.
+  ///
+  /// In ja, this message translates to:
+  /// **'目次'**
+  String get tableOfContents;
+
   /// No description provided for @autoPageStart.
   ///
   /// In ja, this message translates to:

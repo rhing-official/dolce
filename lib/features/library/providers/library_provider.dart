@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -50,7 +51,49 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
     state = state.copyWith(books: books, shelves: shelves);
   }
 
-  Future<({int added, int updated, int removed})> syncAll() async {
+  // 起動時・F5・本棚追加などから並行して呼ばれても、同じファイルが二重に
+  // 登録されないよう、実行中なら同じ結果を共有する
+  Future<({int added, int updated, int removed})>? _syncing;
+
+  Future<({int added, int updated, int removed})> syncAll() {
+    final running = _syncing;
+    if (running != null) return running;
+    final future = _syncAllImpl();
+    _syncing = future;
+    return future.whenComplete(() => _syncing = null);
+  }
+
+  // 同じfilePathで重複登録されたBookを1冊に畳む（過去の並行同期で生じた重複の修復）。
+  // 残すのは読書進捗が最も進んでいる1冊。戻り値は残したBook
+  Future<Book> _dedupeGroup(Box<Book> bookBox, List<Book> group) async {
+    group.sort((a, b) {
+      if (a.isFinished != b.isFinished) return a.isFinished ? -1 : 1;
+      if (a.lastPage != b.lastPage) return b.lastPage.compareTo(a.lastPage);
+      return a.addedAt.compareTo(b.addedAt);
+    });
+    final keep = group.first;
+    for (final dup in group.skip(1)) {
+      final thumb = dup.thumbnailPath;
+      if (thumb != null && thumb != keep.thumbnailPath) {
+        try {
+          final f = File(thumb);
+          if (await f.exists()) await f.delete();
+        } catch (_) {}
+      }
+      await bookBox.delete(dup.id);
+      debugPrint('[Sync] 重複を削除: ${dup.filePath}');
+    }
+    return keep;
+  }
+
+  bool _thumbsShrunk = false;
+
+  // 新規ファイルのサムネ生成・ComicInfo読み取りの同時実行数
+  static const _kSyncConcurrency = 4;
+  // 追加中に一覧へ段階反映する間隔（冊数）
+  static const _kSyncProgressEvery = 50;
+
+  Future<({int added, int updated, int removed})> _syncAllImpl() async {
     debugPrint('[Sync] syncAll開始');
     if (!Hive.isBoxOpen('books')) {
       debugPrint('[Sync] booksボックスが開いていないため中断');
@@ -61,43 +104,37 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
     var added = 0;
     var updated = 0;
     var removed = 0;
+
+    // 全Bookを1回だけ走査して shelfId → filePath → Book一覧 にまとめる
+    // （本棚ごと・新規1冊ごとに全件を走査するとO(N²)になるため）
+    final byShelf = <String, Map<String, List<Book>>>{};
+    for (final b in bookBox.values) {
+      byShelf
+          .putIfAbsent(b.shelfId, () => {})
+          .putIfAbsent(b.filePath, () => [])
+          .add(b);
+    }
+
     for (final shelf in shelfBox.values.toList()) {
       try {
         final actualFiles = await _fileService.scanFolder(shelf.folderPath);
         final actualPaths = actualFiles.map((f) => f.path).toSet();
-        final dbBooks =
-            bookBox.values.where((b) => b.shelfId == shelf.id).toList();
-        final dbBooksByPath = {for (final b in dbBooks) b.filePath: b};
+        final groups = byShelf.putIfAbsent(shelf.id, () => {});
+        // 重複登録の修復と、filePath → Book の引き当て表を作る
+        final dbBooksByPath = <String, Book>{};
+        for (final entry in groups.entries) {
+          dbBooksByPath[entry.key] = entry.value.length > 1
+              ? await _dedupeGroup(bookBox, entry.value)
+              : entry.value.first;
+        }
         debugPrint(
-            '[Sync] 本棚「${shelf.name}」: フォルダ内${actualFiles.length}件 / DB登録${dbBooks.length}件');
+            '[Sync] 本棚「${shelf.name}」: フォルダ内${actualFiles.length}件 / DB登録${dbBooksByPath.length}件');
+
+        final newEntries = <ScannedFile>[];
         for (final entry in actualFiles) {
           final existing = dbBooksByPath[entry.path];
           if (existing == null) {
-            final bId = _uuid.v4();
-            final thumb = await _thumbnailService.generateThumbnail(
-                entry.path, bId, entry.ext);
-            final format = entry.ext == 'pdf' ? BookFormat.pdf : BookFormat.cbz;
-            final number = format == BookFormat.cbz
-                ? await _cbzService.readComicInfoNumber(entry.path)
-                : null;
-            final book = Book()
-              ..id = bId
-              ..title = entry.name
-              ..filePath = entry.path
-              ..relPath = entry.relPath
-              ..shelfId = shelf.id
-              ..thumbnailPath = thumb
-              ..addedAt = DateTime.now()
-              ..format = format
-              ..totalPages = 0
-              ..lastPage = 0
-              ..isFinished = false
-              ..number = number
-              ..fileSize = entry.size
-              ..fileModifiedAt = entry.modified;
-            await bookBox.put(bId, book);
-            added++;
-            debugPrint('[Sync] 追加: ${entry.path}');
+            newEntries.add(entry);
           } else if (existing.fileSize == null &&
               existing.fileModifiedAt == null) {
             // アップデート直後等でまだ基準値を記録していない既存本。
@@ -131,11 +168,71 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
             debugPrint('[Sync] 更新: ${entry.path}');
           }
         }
-        for (final dbBook in dbBooks) {
-          if (!actualPaths.contains(dbBook.filePath)) {
-            await bookBox.delete(dbBook.id);
+
+        // 新規ファイルは数本ずつ並行して処理する。登録するパスは着手時点で
+        // dbBooksByPathに予約するため、同じファイルが二重に登録されることは無い
+        var next = 0;
+        Future<void> worker() async {
+          while (next < newEntries.length) {
+            final entry = newEntries[next++];
+            if (dbBooksByPath.containsKey(entry.path)) continue;
+            final bId = _uuid.v4();
+            final format = switch (entry.ext) {
+              'pdf' => BookFormat.pdf,
+              'epub' => BookFormat.epub,
+              _ => BookFormat.cbz,
+            };
+            final book = Book()
+              ..id = bId
+              ..title = entry.name
+              ..filePath = entry.path
+              ..relPath = entry.relPath
+              ..shelfId = shelf.id
+              ..addedAt = DateTime.now()
+              ..format = format
+              ..totalPages = 0
+              ..lastPage = 0
+              ..isFinished = false
+              ..fileSize = entry.size
+              ..fileModifiedAt = entry.modified;
+            dbBooksByPath[entry.path] = book;
+            book.thumbnailPath = await _thumbnailService.generateThumbnail(
+                entry.path, bId, entry.ext);
+            if (format == BookFormat.cbz) {
+              book.number = await _cbzService.readComicInfoNumber(entry.path);
+            }
+            await bookBox.put(bId, book);
+            added++;
+            debugPrint('[Sync] 追加: ${entry.path}');
+            if (added % _kSyncProgressEvery == 0) await _load();
+          }
+        }
+
+        await Future.wait(List.generate(_kSyncConcurrency, (_) => worker()));
+
+        // 過去バージョンで元解像度のまま保存された大きなサムネを、起動後の
+        // 最初の同期で一度だけ縮小する
+        if (!_thumbsShrunk) {
+          final paths = [
+            for (final b in dbBooksByPath.values)
+              if (b.thumbnailPath != null) b.thumbnailPath!
+          ];
+          var i = 0;
+          Future<void> shrinkWorker() async {
+            while (i < paths.length) {
+              await _thumbnailService.shrinkIfLarge(paths[i++]);
+            }
+          }
+
+          await Future.wait(
+              List.generate(_kSyncConcurrency, (_) => shrinkWorker()));
+        }
+
+        for (final entry in dbBooksByPath.entries) {
+          if (!actualPaths.contains(entry.key)) {
+            await bookBox.delete(entry.value.id);
             removed++;
-            debugPrint('[Sync] 削除: ${dbBook.filePath}');
+            debugPrint('[Sync] 削除: ${entry.key}');
           }
         }
       } catch (e, st) {
@@ -143,6 +240,7 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         debugPrint('[Sync] 本棚「${shelf.name}」の同期エラー: $e\n$st');
       }
     }
+    _thumbsShrunk = true;
     await _load();
     debugPrint('[Sync] syncAll完了: 追加$added件 / 更新$updated件 / 削除$removed件');
     return (added: added, updated: updated, removed: removed);
@@ -162,7 +260,22 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
     book.isFinished = isFinished;
     if (totalPagesChanged) book.totalPages = totalPages;
     await book.save();
-    state = state.copyWith(books: List.of(state.books));
+    // ページをめくるたびにlibraryProviderの全watcher（全タブ・全フォルダ
+    // カード）を再ビルドすると非常に重いため、通知はめくり操作が落ち着いてから
+    // 1回にまとめる（Book自体は上で更新済みなので、再ビルドまで表示が少し
+    // 遅れるだけ）
+    _progressNotifyTimer?.cancel();
+    _progressNotifyTimer = Timer(const Duration(milliseconds: 800), () {
+      if (mounted) state = state.copyWith(books: List.of(state.books));
+    });
+  }
+
+  Timer? _progressNotifyTimer;
+
+  @override
+  void dispose() {
+    _progressNotifyTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> toggleBookFavorite(Book book) async {

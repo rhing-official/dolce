@@ -35,9 +35,11 @@ class BookCard extends StatelessWidget {
                   : Container(
                       color: theme.colorScheme.surface,
                       child: Icon(
-                        book.format == BookFormat.pdf
-                            ? Icons.picture_as_pdf_outlined
-                            : Icons.photo_library_outlined,
+                        switch (book.format) {
+                          BookFormat.pdf => Icons.picture_as_pdf_outlined,
+                          BookFormat.epub => Icons.menu_book_outlined,
+                          BookFormat.cbz => Icons.photo_library_outlined,
+                        },
                         size: 48,
                         color: theme.colorScheme.secondary,
                       ),
