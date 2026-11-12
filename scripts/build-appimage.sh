@@ -16,7 +16,7 @@ mkdir -p "$APPDIR/usr/bin"
 # Flutterのバンドルは実行ファイルと同じ階層のlib/・data/を相対参照する
 cp -a "$BUNDLE/." "$APPDIR/usr/bin/"
 cp "$APP_ID.desktop" "$APPDIR/$APP_ID.desktop"
-cp dolce-icon-256.png "$APPDIR/$APP_ID.png"
+cp icon/dolce-256.png "$APPDIR/$APP_ID.png"
 # AppStreamのメタ情報（無いとappimagetoolが警告する）
 mkdir -p "$APPDIR/usr/share/metainfo" "$APPDIR/usr/share/applications"
 cp "$APP_ID.desktop" "$APPDIR/usr/share/applications/$APP_ID.desktop"

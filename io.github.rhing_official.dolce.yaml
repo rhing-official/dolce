@@ -64,7 +64,7 @@ modules:
       - type: dir
         path: build/linux/x64/release/bundle
       - type: file
-        path: dolce-icon-512.png
+        path: icon/dolce-512.png
         dest-filename: io.github.rhing_official.dolce.png
       - type: file
         path: io.github.rhing_official.dolce.desktop
