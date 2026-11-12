@@ -1,7 +1,7 @@
 name: dolce
 description: A local e-book reader for PDF, CBZ and EPUB files.
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.4.0+1
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -50,7 +50,7 @@ msix_config:
   publisher_display_name: Rhing
   identity_name: Rhing.komichi
   publisher: CN=05798F0E-41EC-4FF9-BBAB-61384063660A
-  msix_version: 1.0.0.0
+  msix_version: 1.4.0.0
   logo_path: icon/dolce-512.png
   capabilities: broadFileSystemAccess
   store: true
