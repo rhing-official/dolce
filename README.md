@@ -72,4 +72,4 @@ Linux の AppImage は、`flutter build linux --release` のあとに `scripts/b
 
 ## 開発メモ
 
-構成・設計上の注意は [CLAUDE.md](CLAUDE.md)、開発の記録は [日記.md](日記.md) にあります。
+構成・設計上の注意は [CLAUDE.md](CLAUDE.md)、開発の記録は [日記.md](文書/日記.md) にあります。
